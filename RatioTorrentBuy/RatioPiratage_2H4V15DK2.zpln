@@ -1,0 +1,1264 @@
+﻿{
+  "paragraphs": [
+    {
+      "text": "import scala.collection.Map\nimport scala.collection.mutable.ArrayBuffer\nimport scala.util.Random\nimport org.apache.spark.broadcast.Broadcast\nimport org.apache.spark.ml.recommendation.{ALS, ALSModel}\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\nimport org.apache.spark.sql.functions._\n\nimport java.nio.file.Paths\nimport spark.implicits._\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:36:56+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "import scala.collection.Map\nimport scala.collection.mutable.ArrayBuffer\nimport scala.util.Random\nimport org.apache.spark.broadcast.Broadcast\nimport org.apache.spark.ml.recommendation.{ALS, ALSModel}\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\nimport org.apache.spark.sql.functions._\nimport java.nio.file.Paths\nimport spark.implicits._\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654666573729_1846651691",
+      "id": "paragraph_1654666573729_1846651691",
+      "dateCreated": "2022-06-08T05:36:13+0000",
+      "dateStarted": "2022-06-09T20:36:56+0000",
+      "dateFinished": "2022-06-09T20:36:59+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:7770"
+    },
+    {
+      "text": "// Load the data\n\nval OS = System.getProperty(\"os.name\").toLowerCase\nif (OS.contains(\"win\"))\n  System.setProperty(\"hadoop.home.dir\", Paths.get(\"winutils\").toAbsolutePath.toString)\nelse\n  System.setProperty(\"hadoop.home.dir\", \"/\")\n\nval spark = SparkSession.builder().config(\"spark.master\", \"local[*]\").getOrCreate()\n// Optional, but may help avoid errors due to long lineage\n//spark.sparkContext.setCheckpointDir(\"./tmp\")\n\nval base = \"./audioscrobbler_data/\"\n//val base = \"gs://dataproc-staging-europe-west6-872288405326-yxz32br1/audioscrobbler_data/\"\n\nval rawUserArtistData = spark.read.textFile(base + \"user_artist_data.txt\")\nval rawArtistData = spark.read.textFile(base + \"artist_data.txt\")\nval rawArtistAlias = spark.read.textFile(base + \"artist_alias.txt\")\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:37:20+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mOS\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = linux\n\u001b[1m\u001b[34mspark\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.SparkSession\u001b[0m = org.apache.spark.sql.SparkSession@63ee3f2c\n\u001b[1m\u001b[34mbase\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = ./audioscrobbler_data/\n\u001b[1m\u001b[34mrawUserArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654666587385_678987710",
+      "id": "paragraph_1654666587385_678987710",
+      "dateCreated": "2022-06-08T05:36:27+0000",
+      "dateStarted": "2022-06-09T20:37:00+0000",
+      "dateFinished": "2022-06-09T20:37:01+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7771"
+    },
+    {
+      "text": "// Creat a DataFrame witht the artistData\n// Count the number of artist\n// Dispplay the first row of the DF\n\nval artistByID = rawArtistData.flatMap { line =>\n      val (id, name) = line.span(_ != '\\t')\n      if (name.isEmpty) {\n        None\n      } else {\n        try {\n          Some((id.toInt, name.trim))\n        } catch {\n          case _: NumberFormatException => None\n        }\n      }\n    }.toDF(\"id\", \"name\")\n \n// we can see that it map indeed the ID to the name of the artist   \nprintln(artistByID.count)\nartistByID.head",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:38:36+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "1848281\n\u001b[1m\u001b[34martistByID\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [id: int, name: string]\n\u001b[1m\u001b[34mres114\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Row\u001b[0m = [1134999,06Crazy Life]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=113",
+              "$$hashKey": "object:12382"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=114",
+              "$$hashKey": "object:12383"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654752048400_394605767",
+      "id": "paragraph_1654752048400_394605767",
+      "dateCreated": "2022-06-09T05:20:48+0000",
+      "dateStarted": "2022-06-09T20:38:36+0000",
+      "dateFinished": "2022-06-09T20:38:41+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7772"
+    },
+    {
+      "text": "/*\nval userArtistDF = rawUserArtistData.map { line =>\n  val Array(user, artist, _*) = line.split(' ')\n  (user.toInt, artist.toInt)\n}.toDF(\"user\", \"artist\")\n*/",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:39:45+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654754057146_101837738",
+      "id": "paragraph_1654754057146_101837738",
+      "dateCreated": "2022-06-09T05:54:17+0000",
+      "dateStarted": "2022-06-09T20:39:45+0000",
+      "dateFinished": "2022-06-09T20:39:46+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7773"
+    },
+    {
+      "text": "// Create a DataFrame with the aliasId and artistId => badid, goodid\n// Count the number of alias\n\nval rawArtistAliasDF = rawArtistAlias.flatMap { line =>\n  try {\n    line.split('\\t') match {\n      case Array(badid, goodid) =>\n        if (badid.isEmpty) None\n        else Some((badid.toInt, goodid.toInt))\n      case _ => None\n    }\n  } catch {\n    case _: Throwable => None //\n  }\n}.toDF(\"badid\",\"goodid\")\nrawArtistAliasDF.count",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:40:56+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "table",
+              "height": 300,
+              "optionOpen": false,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "user": "string",
+                      "artist": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                }
+              },
+              "commonSetting": {}
+            }
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mrawArtistAliasDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [badid: int, goodid: int]\n\u001b[1m\u001b[34mres117\u001b[0m: \u001b[1m\u001b[32mLong\u001b[0m = 190892\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=115",
+              "$$hashKey": "object:12451"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654687366367_128399045",
+      "id": "paragraph_1654687366367_128399045",
+      "dateCreated": "2022-06-08T11:22:46+0000",
+      "dateStarted": "2022-06-09T20:40:47+0000",
+      "dateFinished": "2022-06-09T20:40:50+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7774"
+    },
+    {
+      "text": "// Count the number of time that an artist as been misspelled\n\nval misspelledArtistDF = rawArtistAliasDF.groupBy($\"goodid\").count().orderBy($\"count\".desc)\nmisspelledArtistDF.head",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:41:36+0000",
+      "progress": 93,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "table",
+              "height": 91.4,
+              "optionOpen": false
+            }
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "190892\n\u001b[1m\u001b[34mmisspelledArtistDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [goodid: int, count: bigint]\n\u001b[1m\u001b[34mres118\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Row\u001b[0m = [1000024,1204]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=116",
+              "$$hashKey": "object:12508"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=117",
+              "$$hashKey": "object:12509"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654666942882_1914157861",
+      "id": "paragraph_1654666942882_1914157861",
+      "dateCreated": "2022-06-08T05:42:22+0000",
+      "dateStarted": "2022-06-09T20:41:09+0000",
+      "dateFinished": "2022-06-09T20:41:15+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7775"
+    },
+    {
+      "text": "// Join and display the count of misspelled artist with the real artist name\n// Ascending count order\nval misspelledByArtistNameDF = misspelledArtistDF.join(artistByID, misspelledArtistDF(\"goodid\")===artistByID(\"id\")).orderBy($\"count\")\nmisspelledByArtistNameDF.drop(\"goodid\",\"id\").show(10)\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:45:49+0000",
+      "progress": 50,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-----+--------------------+\n|count|                name|\n+-----+--------------------+\n|    1|          Club Spice|\n|    1|   Bobcat Goldthwait|\n|    1|          ハナレグミ|\n|    1|        David Singer|\n|    1|          The Ambush|\n|    1|        Steve Rhyner|\n|    1|         Dumdum boys|\n|    1|Midnight Configur...|\n|    1|What Price, Wonde...|\n|    1|          Emre Altuğ|\n+-----+--------------------+\nonly showing top 10 rows\n\n\u001b[1m\u001b[34mmisspelledByArtistNameDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [goodid: int, count: bigint ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=125",
+              "$$hashKey": "object:12828"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654752759134_1215478919",
+      "id": "paragraph_1654752759134_1215478919",
+      "dateCreated": "2022-06-09T05:32:39+0000",
+      "dateStarted": "2022-06-09T20:45:49+0000",
+      "dateFinished": "2022-06-09T20:45:54+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7776"
+    },
+    {
+      "user": "anonymous",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=127",
+              "$$hashKey": "object:12864"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654807435932_1914275601",
+      "id": "paragraph_1654807435932_1914275601",
+      "dateCreated": "2022-06-09T20:43:55+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:12643",
+      "text": "// Display the count of misspelled artist with the real artist name\n// Descending count order\nmisspelledByArtistNameDF.drop(\"goodid\",\"id\").orderBy($\"Count\".desc).show(10)",
+      "dateUpdated": "2022-06-09T20:45:59+0000",
+      "dateFinished": "2022-06-09T20:46:05+0000",
+      "dateStarted": "2022-06-09T20:45:59+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-----+-----------+\n|count|       name|\n+-----+-----------+\n| 1204|  Metallica|\n|  955|  [unknown]|\n|  671| Pink Floyd|\n|  656| South Park|\n|  656|Linkin Park|\n|  629|The Beatles|\n|  628|     Eminem|\n|  620|  Radiohead|\n|  537|Iron Maiden|\n|  536|    Nirvana|\n+-----+-----------+\nonly showing top 10 rows\n\n"
+          }
+        ]
+      }
+    },
+    {
+      "text": "// Some statistics : number of misspelled artists over total artists\n\nval countOfMisspelledArtist : Double = misspelledArtistDF.count\nval countOfArtist : Double = artistByID.count\nval percentOfMisspelled = countOfMisspelledArtist/countOfArtist*100.0",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:47:17+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mcountOfMisspelledArtist\u001b[0m: \u001b[1m\u001b[32mDouble\u001b[0m = 22478.0\n\u001b[1m\u001b[34mcountOfArtist\u001b[0m: \u001b[1m\u001b[32mDouble\u001b[0m = 1848281.0\n\u001b[1m\u001b[34mpercentOfMisspelled\u001b[0m: \u001b[1m\u001b[32mDouble\u001b[0m = 1.2161570670260637\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=128",
+              "$$hashKey": "object:12936"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=129",
+              "$$hashKey": "object:12937"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654753452902_820834436",
+      "id": "paragraph_1654753452902_820834436",
+      "dateCreated": "2022-06-09T05:44:12+0000",
+      "dateStarted": "2022-06-09T20:47:17+0000",
+      "dateFinished": "2022-06-09T20:47:23+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7777"
+    },
+    {
+      "text": "// Display the most misspelled artists by descending order because of the output truncated at 1'000\nz.show(misspelledByArtistNameDF.orderBy($\"count\".desc).select($\"count\",$\"name\"))\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T21:05:41+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "scatterChart",
+              "height": 300,
+              "optionOpen": true,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "count": "string",
+                      "name": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "stackedAreaChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                },
+                "scatterChart": {
+                  "xAxis": {
+                    "name": "name",
+                    "index": 1,
+                    "aggr": "sum"
+                  },
+                  "yAxis": {
+                    "name": "count",
+                    "index": 0,
+                    "aggr": "sum"
+                  }
+                },
+                "pieChart": {},
+                "lineChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "rotate",
+                  "forceY": false,
+                  "isDateFormat": false,
+                  "lineWithFocus": false
+                },
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "keys": [
+                {
+                  "name": "name",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "count",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "commonSetting": {}
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TABLE",
+            "data": "count\tname\n1204\tMetallica\n955\t[unknown]\n671\tPink Floyd\n656\tLinkin Park\n656\tSouth Park\n629\tThe Beatles\n628\tEminem\n620\tRadiohead\n537\tIron Maiden\n536\tNirvana\n527\tDelerium\n451\tU2\n450\tRed Hot Chili Peppers\n424\tThe Smashing Pumpkins\n424\tMarilyn Manson\n413\tGuns N' Roses\n390\tKoЯn\n385\t浜崎あゆみ\n373\t植松伸夫\n365\tm-flo\n362\tLed Zeppelin\n357\tRammstein\n357\tNine Inch Nails\n353\tHoward Shore\n352\tThe Rolling Stones\n346\tThe Chemical Brothers\n342\tGreen Day\n331\tBjörk\n327\tLimp Bizkit\n325\tBeastie Boys\n321\tR.E.M.\n319\tПетр Ильич Чайковский\n317\tThe Prodigy\n315\tIn Flames\n312\tApocalyptica\n303\tJohann Sebastian Bach\n299\tSimon & Garfunkel\n296\tColdplay\n295\tPearl Jam\n295\tTool\n292\tRage Against the Machine\n292\t2Pac\n280\tblink-182\n277\tThe Offspring\n276\tCypress Hill\n270\tSystem of a Down\n265\tNas\n265\tAC/DC\n264\tThe Cure\n263\tAphex Twin\n262\tNick Cave and the Bad Seeds\n262\tWeezer\n262\tBritney Spears\n260\tDavid Bowie\n259\tLudwig van Beethoven\n258\tDepeche Mode\n250\tNotorious B.I.G.\n249\tBasement Jaxx\n245\tOutkast\n244\tDaft Punk\n242\tSantana\n241\tJay-Z\n239\tIncubus\n236\tFoo Fighters\n235\tThe Roots\n233\tDream Theater\n232\tChildren of Bodom\n231\tNightwish\n230\tSnoop Dogg\n229\tJohnny Cash\n229\tTori Amos\n229\tJohn Williams\n229\tCounting Crows\n229\tAir\n228\t50 Cent\n227\tNo Doubt\n227\tBob Dylan\n225\tMassive Attack\n220\tFear Factory\n218\tThe Mamas & the Papas\n217\tEvanescence\n217\tMadonna\n216\tBlack Sabbath\n215\tBelle and Sebastian\n214\tPantera\n213\tLars Winnerbäck\n210\tBlank & Jones\n210\t\"Weird Al\" Yankovic\n208\tIced Earth\n208\tThe Herbaliser\n207\tBone Thugs-N-Harmony\n206\tMoby\n205\tCradle of Filth\n204\tWolfgang Amadeus Mozart\n203\tJay-Z and Linkin Park\n202\t...And You Will Know Us by the Trail of Dead\n201\tRob Zombie\n200\tThe White Stripes\n199\tModest Mouse\n199\tDeftones\n197\tDe La Soul\n195\tEnigma\n194\tQueen\n193\tAlanis Morissette\n191\tATB\n191\tA Tribe Called Quest\n191\tThe Clash\n190\tBlack Eyed Peas\n189\tFatboy Slim\n189\tCreedence Clearwater Revival\n188\tMe First and the Gimme Gimmes\n186\tElvis Presley\n186\tThe Mars Volta\n186\tBlind Guardian\n183\tNOFX\n182\tBoards of Canada\n180\tAFI\n179\tFrank Zappa\n179\tThe Presidents of the United States of America\n178\tJimi Hendrix\n178\tPixies\n178\tBlur\n178\tOasis\n178\tMuse\n177\tMichael Jackson\n177\tThe Smiths\n177\tClint Mansell\n176\tSlipknot\n176\tDr. Dre\n174\t宇多田ヒカル\n174\tX-Ecutioners\n174\tRun-D.M.C.\n174\tMissy Elliott\n173\tDestiny's Child\n172\tQueens of the Stone Age\n172\tSinéad O'Connor\n172\tL'Arc~en~Ciel\n171\tDark Tranquillity\n170\tAutechre\n169\tScooter\n168\tDimmu Borgir\n168\tThe Doors\n167\tA Perfect Circle\n166\tBon Jovi\n165\tUsher\n165\tA Silver Mt. Zion\n165\tThe Cranberries\n164\tBT\n164\tAntonín Dvořák\n163\tNew Order\n163\tBad Religion\n163\tFaithless\n161\t3 Doors Down\n160\tSarah McLachlan\n159\tDJ Tiësto\n158\tSoulfly\n158\tN*E*R*D\n157\tAvril Lavigne\n157\tDave Matthews Band\n156\tMillencolin\n156\tAmon Tobin\n156\tThe Velvet Underground\n155\tHans Zimmer\n155\tBright Eyes\n154\tSlayer\n153\t光田康典\n152\tEnya\n151\tAlice in Chains\n149\tSublime\n148\tBeck\n148\tBeyoncé\n147\tOpeth\n147\tKylie Minogue\n147\tSonata Arctica\n144\tWu-Tang Clan\n144\t久石譲\n141\tJimmy Eat World\n141\t菅野よう子\n141\tPlacebo\n140\tBusta Rhymes\n139\tStone Temple Pilots\n139\tBoA\n138\tDJ Shadow\n138\tDashboard Confessional\n138\tLooptroop\n138\tFrédéric Chopin\n137\tDire Straits\n137\tThe Strokes\n137\tProbot\n136\tGeorg Friedrich Händel\n136\tSigur Rós\n133\tJamiroquai\n133\tMegadeth\n133\tThe Beach Boys\n133\tLynyrd Skynyrd\n132\tUnderworld\n131\tGigi D'Agostino\n131\tOzzy Osbourne\n131\tStatic-X\n131\tThe Dillinger Escape Plan\n130\tAerosmith\n130\tRobbie Williams\n130\tBob Marley & the Wailers\n129\tJennifer Lopez\n129\tGang Starr\n128\tMiles Davis\n127\tThe Who\n127\tEric Clapton\n127\t坂本真綾\n127\tArch Enemy\n127\tThe Corrs\n127\tHiM\n125\tThe Hives\n125\tEnnio Morricone\n124\tMorcheeba\n124\t林原めぐみ\n124\tRush\n124\tPennywise\n124\tBloodhound Gang\n123\tSepultura\n122\tBruce Springsteen\n122\t1 Giant Leap\n122\tCafé Del Mar\n122\tLaveerre\n121\tStan Getz & João Gilberto\n121\tG3\n120\tT. Rex\n120\tCrosby, Stills, Nash & Young\n120\tTricky\n120\t(hed) Planet Earth\n119\t椎名林檎\n119\tThe Crystal Method\n119\tRöyksopp\n118\tLess Than Jake\n118\tThe Jesus and Mary Chain\n118\tRZA\n118\tKanye West\n118\tTalib Kweli\n117\tStratovarius\n117\tSiouxsie and the Banshees\n117\t梶浦由記\n117\tLenny Kravitz\n117\t石井妥師\n117\tFleetwood Mac\n117\tGarbage\n116\tSoilwork\n116\tThe Pogues\n116\tElliott Smith\n115\tThe Flaming Lips\n114\tThe Ataris\n114\tFaith No More\n114\tThey Might Be Giants\n114\tShania Twain\n114\tMachine Head\n114\tSting\n114\tAlicia Keys\n113\tLoreena McKennitt\n112\tJudas Priest\n112\tBob Marley\n112\tThe 5.6.7.8's\n112\tOrbital\n111\tt.A.T.u.\n111\tDisturbed\n111\tGoo Goo Dolls\n111\tThe Police\n111\tGorillaz\n111\tThe Postal Service\n110\tAaliyah\n109\tVarious Artists\n109\tZero 7\n108\tDinosaur Jr.\n108\tElton John\n108\tThe Section Quartet\n107\tTaking Back Sunday\n107\tMelvins\n107\tThe 6ths\n107\tJoss Whedon & Christophe Beck\n107\tWithin Temptation\n106\tNickelback\n105\tErik Satie\n105\tYoussou N'Dour & Neneh Cherry\n105\tGodspeed You! Black Emperor\n104\tモーニング娘。\n104\tPrimus\n104\tYann Tiersen\n104\tDeath Cab for Cutie\n104\tWilliam Shatner\n103\tAt the Drive-In\n103\tInterpol\n103\tKMFDM\n103\tNelly Furtado\n103\tThe Streets\n102\tNeil Young\n102\tL'Âme Immortelle\n101\tXzibit\n101\tThe Dust Brothers\n101\tJurassic 5\n101\tThe Shins\n100\tDropkick Murphys\n100\tAlkaline Trio\n100\tAlien Ant Farm\n100\tBarenaked Ladies\n100\tPapa Roach\n100\tSheryl Crow\n99\tRancid\n99\tJohn Lennon\n99\tDeath\n99\tBomfunk MC's\n99\tVangelis\n99\tVan Halen\n98\tPaul Van Dyk\n98\tManowar\n97\tP.O.D.\n97\tLacuna Coil\n96\tDeep Purple\n96\tThe Get Up Kids\n96\tFrank Klepacki\n96\tAnathema\n96\tThievery Corporation\n96\tUNKLE\n95\tX JAPAN\n94\tSergio Mendes & Brasil '66\n94\t布袋寅泰\n93\tBooker T. & the MG's\n93\tEve\n93\tDido\n92\tDMX\n92\tBryan Adams\n92\tTrans-Siberian Orchestra\n92\tFinntroll\n91\tMeshuggah\n91\tEinstürzende Neubauten\n91\tPet Shop Boys\n91\tMötley Crüe\n91\tPortishead\n90\tGuano Apes\n90\tGroove Armada\n90\tChristina Aguilera\n90\tPJ Harvey\n89\tRoxette\n89\tAudioslave\n89\tDanny Elfman\n89\tDir en grey\n89\tChad Kroeger\n89\tX-Press 2\n89\tTenacious D\n89\tType O Negative\n89\tD12\n89\tOl' Dirty Bastard\n89\tTom Waits\n88\tFranz Joseph Haydn\n88\tMary J. Blige\n88\tTalking Heads\n88\tBrooklyn Bounce\n88\tInfected Mushroom\n87\tAntonio Vivaldi\n87\tSalt-n-Pepa\n87\tµ-Ziq\n87\tFerry Corsten\n86\tHall & Oates\n86\tArmin Van Buuren\n86\tKraftwerk\n86\tConjure One\n86\tBen Folds Five\n86\tRhapsody\n85\tEels\n85\tBlondie\n84\tRJD2\n84\tTurbonegro\n84\tThursday\n84\tPrimal Scream\n84\tDrowning Pool\n84\tMotörhead\n84\tBush\n84\tJAM Project\n83\tMaroon 5\n83\tDuran Duran\n83\tLudacris\n82\tBilly Joel\n82\tIggy Pop\n82\tPavement\n82\tQueen & David Bowie\n82\tFranz Ferdinand\n82\tCat Stevens\n82\tBlack Star\n82\t王菲\n81\tSquarepusher\n81\tJohn Mayer\n81\tThe Soggy Bottom Boys\n81\tMr. Scruff\n81\tSuicidal Tendencies\n81\tJeff Buckley\n81\tPhil Collins\n81\tNapalm Death\n81\tThe B-52's\n81\tManic Street Preachers\n81\tIron & Wine\n81\tIll Niño\n81\tKillswitch Engage\n80\t安室奈美恵\n80\tStaind\n80\tHatebreed\n80\tFrank Sinatra\n80\tThe Kinks\n80\tBehemoth\n80\tDance Dance Revolution\n79\tEdvard Grieg\n79\tReel Big Fish\n79\tEagles\n79\tSoundgarden\n78\tThe Libertines\n78\tOrchestral Manoeuvres In The Dark\n78\tK's Choice\n78\tLostprophets\n77\tElvis Costello\n77\tNancy Sinatra\n77\tRufus Wainwright\n77\tNew Found Glory\n77\tPaco De Lucia, Al Di Meola, John McLaughlin\n77\tIce Cube\n76\tBlue Öyster Cult\n76\tScorpions & Berliner Philharmoniker\n76\tCake\n76\tDanzig\n76\tCoal Chamber\n76\tTimo Rautiainen & Trio Niskalaukaus\n76\tNorah Jones\n76\tManu Chao\n76\tMoonspell\n76\tSum 41\n75\tSpineShank\n75\tGood Charlotte\n75\tMethod Man\n75\tNatalie Imbruglia\n75\tBlack Label Society\n75\t松本孝弘\n75\tArt of Noise\n75\tAlice Cooper\n75\tTears for Fears\n74\tGenesis\n74\tMilk & Sugar\n74\tLil Jon & The East Side Boyz\n74\tGhostface\n74\tLeftfield\n74\tSneaker Pimps\n74\tThe (International) Noise Conspiracy\n74\tThe Cardigans\n73\tPhish\n73\tKreator\n73\tBenny Benassi Presents The Biz\n73\tHammerfall\n73\tCamille Saint-Saëns\n73\tTherion\n73\tBlackmore's Night\n73\t坂本龍一\n73\tMobb Deep\n72\tAmon Amarth\n71\tNick Drake\n71\tCKY\n71\tDilated Peoples\n71\tHoobastank\n71\tKatatonia\n71\tLadytron\n71\tJa Rule\n71\tB.B. King & Eric Clapton\n71\tKent\n70\tMasta Ace\n70\tKlaus Badelt\n70\tSevendust\n70\tElectric Light Orchestra\n70\tR. Kelly\n70\tJethro Tull\n70\tMarvin Gaye\n70\tGoldfinger\n70\tBuena Vista Social Club\n70\tCoheed and Cambria\n69\tGodsmack\n69\tPlaid\n69\tPaul Oakenfold\n69\tMindless Self Indulgence\n69\tFluke\n69\tJane's Addiction\n69\tStevie Wonder\n69\tEmerson, Lake & Palmer\n68\tJustin Timberlake\n68\t周杰倫\n68\tMadvillain\n68\t311\n68\tWarren G\n68\tDead Kennedys\n68\tStabbing Westward\n68\tPaul McCartney\n68\tQueensrÿche\n68\tAnti-Flag\n68\tOur Lady Peace\n67\tSteve Reich\n67\tSvenson & Gielen\n67\tJohann Pachelbel\n67\tSkunk Anansie\n67\tSonic Youth\n67\tThe Bouncing Souls\n67\tFlip & Fill\n67\tRun-D.M.C. vs. Jason Nevins\n67\tPowerman 5000\n67\tAstral Projection\n67\tAnthrax\n67\tNelly\n67\tJohn Mayall & The Bluesbreakers\n67\tEmiliana Torrini\n67\tThe Haunted\n66\tCarl Orff\n66\tMariah Carey\n66\tMos Def\n66\tDerek and the Dominos\n66\tCharly Lownoise & Mental Theo\n66\tTom Petty and the Heartbreakers\n66\tBig Brother & the Holding Company\n66\tThe Dandy Warhols\n66\tBadly Drawn Boy\n66\tBen Harper\n66\tAretha Franklin\n66\tMatchbox Twenty\n66\tBilly Bragg & Wilco\n65\tSee-Saw\n65\tAni DiFranco\n65\tStevie Ray Vaughan and Double Trouble\n65\tGrandaddy\n65\t倖田來未\n65\tCéline Dion\n65\tApoptygma Berzerk\n64\tElvis Costello & the Attractions\n64\tThe Sisters of Mercy\n64\t:Wumpscut:\n64\tThe Mighty Mighty Bosstones\n64\tДмитрий Шостакович\n64\tCocteau Twins\n64\tAfter Forever\n64\tSentenced\n64\tAce of Base\n64\tJames Horner\n64\tMan Or Astro-man?\n63\tKalyanji & Anandji Shah\n63\tRyan Adams\n63\tGary Jules\n63\tChicane\n63\tMF Doom\n63\tThe Lovin' Spoonful\n63\tParadise Lost\n63\tCaptain Beefheart & His Magic Band\n63\tKiss\n63\tDead Can Dance\n62\tTravis\n62\tBöhse Onkelz\n62\tThe Distillers\n62\tFun Lovin' Criminals\n62\tDef Leppard\n62\tAtreyu\n62\tScorpions\n62\tWyclef Jean\n62\tShpongle\n61\tPublic Enemy\n61\tBonnie 'Prince' Billy & Matt Sweeney\n61\tThe Game\n61\tSugababes\n61\tJadakiss\n61\tGwen Stefani\n61\tThe Verve\n61\tABBA\n61\tBran Van 3000\n61\tPaul McCartney & Wings\n61\tCannibal Corpse\n61\tCreed\n61\tSilverchair\n61\tToto\n60\tFountains of Wayne\n60\tDie Ärzte\n60\tThomas Newman\n60\tFelix Mendelssohn\n60\tHelloween\n60\tUB40\n60\tAlizée\n60\tFinch\n60\tKamelot\n60\tDeltron 3030\n60\tJohn Travolta & Olivia Newton-John\n60\tHallucinogen\n60\tTracy Chapman\n59\tZZ Top\n59\tSoul Coughing\n59\tSnow Patrol\n59\tAtomic Kitten\n59\tAcda En De Munnik\n59\t10,000 Maniacs\n59\tSarah Brightman & Andrea Bocelli\n59\tBen Folds\n59\tBlue Man Group\n59\tPizzicato Five\n59\tASIAN KUNG-FU GENERATION\n58\tMayhem\n58\tLagwagon\n58\tNasum\n58\tLamb of God\n58\tAyreon\n58\tCrazy Town\n58\tCyber X\n58\tBlind Melon\n58\tPhilip Glass\n58\tFranz Liszt\n58\t*NSYNC\n58\tAimee Mann\n57\tHüsker Dü\n57\tMy Dying Bride\n57\tLeonard Cohen\n57\tYellowcard\n57\tKC and the Sunshine Band\n57\tGeorges Bizet\n57\tMike Oldfield\n57\tSavage Garden\n57\tSlum Village\n57\tThe Gathering\n57\tMark Knopfler\n57\tKings of Convenience\n57\tTiësto\n56\tEurythmics\n56\tThe Stooges\n56\tSimple Minds\n56\tMy Chemical Romance\n56\tK-Ci & JoJo\n56\tLouis Armstrong\n56\tSaves the Day\n56\tThe Avalanches\n56\tThe Magnetic Fields\n56\tKool & the Gang\n56\tMisfits\n56\t堀江由衣\n56\t鬼束ちひろ\n55\tHarold Faltermeyer\n55\tFelix da Housecat\n55\tClaude-Michel Schönberg\n55\tJames Brown\n55\tMorbid Angel\n55\tThe Psychedelic Furs\n55\tTristania\n55\tTeddybears Sthlm\n55\tKate Bush\n55\tJonathan Larson\n55\tErykah Badu\n55\tGeorge Michael\n54\tLou Reed\n54\tBonnie 'Prince' Billy\n54\tMogwai\n54\tJoão Gilberto, Stan Getz & Astrud Gilberto\n54\tGustav Holst\n54\tThin Lizzy\n54\tCommon\n54\tOOMPH!\n54\tThe Tamperer\n54\tPropellerheads\n54\tNeutral Milk Hotel\n54\tThe Yardbirds\n54\t中島美嘉\n54\tThe Darkness\n53\tBuilt to Spill\n53\tThe Charlatans\n53\tNightmares on Wax\n53\tB.B. King\n53\tМумий Тролль\n53\tCarcass\n53\tミニモニ。\n53\tOceanlab\n52\tEd Harcourt\n52\tThe Bangles\n52\tTangerine Dream\n52\tHarry Connick, Jr.\n52\tSmash Mouth\n52\tThe Jimi Hendrix Experience\n52\tThe Peter Malick Group\n52\tFrou Frou\n52\tVNV Nation\n52\tMeat Loaf\n52\tJefferson Airplane\n52\tLeevi and the Leavings\n52\tLamb\n52\tNo Use for a Name\n51\t鷺巣詩郎\n51\tRob Dougan\n51\tEverything But the Girl\n51\tTalib Kweli & Hi-Tek\n51\tWilco\n51\tAndrew Lloyd Webber\n51\tDexy's Midnight Runners\n51\tMudvayne\n51\tTed Leo and the Pharmacists\n51\tBjörn Rosenström\n51\tThe Allman Brothers Band\n51\tROUND TABLE featuring Nino\n51\tHandsome Boy Modeling School\n51\tGeorge Gershwin\n51\tKing Crimson\n51\tDe-Phazz\n51\tGlassjaw\n51\tThird Eye Blind\n50\tThe Eighties Matchbox B-Line Disaster\n50\t桜庭統\n50\tASA-CHANG & 巡礼\n50\tPidżama Porno\n50\tKristin Hersh\n50\tTheme Songs\n50\tKelis\n50\tThe Stone Roses\n50\tElvis Presley vs. Junkie XL\n50\tBlack Rebel Motorcycle Club\n50\tTrick Daddy\n50\tPorcupine Tree\n50\tViolent Femmes\n50\tSeñor Coconut\n50\tGamma Ray\n50\tThe Stranglers\n50\tRamones\n49\tThe Alan Parsons Project\n49\tRobbie Williams & Nicole Kidman\n49\t玉置成実\n49\tMartha And The Vandellas\n49\t奥井雅美\n49\tKOTOKO\n49\tAsh\n49\tZen Café\n49\tInsane Clown Posse\n49\tRollergirl\n49\tChuck Berry\n49\tUlver\n49\tAvantasia\n49\tFabolous\n49\tLove Spirals Downwards\n49\tThe Les Claypool Frog Brigade\n49\tSuper Furry Animals\n49\tPuff Daddy\n49\tLL Cool J\n49\tThrice\n49\tThe Beatnuts\n49\tMichelle Branch\n48\tНиколай Римский-Корсаков\n48\tWWE\n48\tCassius\n48\tThe Crown\n48\t雅-Miyavi-\n48\tThe Beta Band\n48\tN.W.A\n48\tKate Ryan\n48\tSophie Ellis-Bextor\n48\tKRS-One\n48\tKalmah\n48\tTheatre of Tragedy\n48\tINXS\n48\tWreckx-N-Effect\n48\tDusty Springfield\n48\tThe All-American Rejects\n48\tMoloko\n47\tBlümchen\n47\tMarco Borsato\n47\tJerry Goldsmith\n47\tSam the Sham & the Pharaohs\n47\tCream\n47\tThe Used\n47\tAlan Menken\n47\tThe Cinematic Orchestra\n47\tBonnie Tyler\n46\t4 Strings\n46\tThis Mortal Coil\n46\tApulanta\n46\tThe Crüxshadows\n46\tThe Blues Brothers\n46\tHerbie Hancock\n46\tCat Power\n46\tMichael Andrews\n46\tThe Moody Blues\n46\tAesop Rock\n46\tHeartsdales\n46\tDarkthrone\n46\tLeAnn Rimes\n46\tFranz Schubert\n46\tMr. Bungle\n46\tSugarcult\n46\tMazzy Star\n46\tMalice Mizer\n46\tLil' Kim\n46\tPeter Gabriel\n46\tFugees\n46\tTom Jones\n45\tLisa Loeb\n45\tChingy\n45\tNile\n45\tThe J. Geils Band\n45\tBachman-Turner Overdrive\n45\tMushroomhead\n45\tFrom Autumn to Ashes\n45\tConverge\n45\tShakira\n45\tDo As Infinity\n45\tNada Surf\n45\tRise Against\n45\t相川七瀬\n45\tKruder & Dorfmeister\n45\tDntel\n45\tMxPx\n45\tJoy Division\n44\tThe Righteous Brothers\n44\tBuffalo Springfield\n44\t東京スカパラダイスオーケストラ\n44\tGeorge Thorogood & the Destroyers\n44\tPUFFY\n44\tthe brilliant green\n44\tBéla Bartók\n44\tMoxy Früvous\n44\tDave Matthews & Tim Reynolds\n44\tMad Caddies\n44\tBee Gees\n44\tRobbie Williams & Kylie Minogue\n44\t倉木麻衣\n44\tThe Notwist\n44\tSuede\n44\tSaint Etienne\n44\tJools Holland\n44\tJohannes Brahms\n44\tErick Sermon\n44\tMonty Python\n44\tPrince\n44\tJanis Joplin\n44\tSt. Germain\n44\tAphrodite\n44\tTowa Tei\n44\tJack Johnson\n44\tYeah Yeah Yeahs\n44\tGolden Earring\n44\tKyuss\n44\tGZA/Genius\n44\tSimple Plan\n43\t後藤真希\n43\tDJ Sakin & Friends\n43\tThe Jackson 5\n43\tParty Ben\n43\tLo Fidelity Allstars\n43\tThe Orb\n43\tGyllene Tider\n43\tM.O.P.\n43\tPoison the Well\n43\tRichard Wagner\n43\t少女革命ウテナ\n43\tPrefuse 73\n43\tSly & the Family Stone\n43\t孫燕姿\n43\tJack Off Jill\n43\tThe Go-Go's\n43\tPyotr Ilyich Tchaikovsky\n43\t松浦亜弥\n43\tBanco de Gaia\n43\tBilly Idol\n42\tFiona Apple\n42\tYngwie Malmsteen\n42\tDesert Sessions\n42\tLords of Acid\n42\tJean-Michel Jarre\n42\tNeil Young & Crazy Horse\n42\tScissor Sisters\n42\tBillie Holiday\n42\tCosmic Gate\n42\t矢井田瞳\n42\tLe Tigre\n42\tCam'ron\n42\tNancy Sinatra & Lee Hazlewood\n42\tCibo Matto\n42\tThe Mountain Goats\n42\tBroken Social Scene\n42\tDJ Sammy & Yanou\n42\tThe Brand New Heavies\n42\tSunny Day Real Estate\n42\tSash!\n42\ta-ha\n42\tThe Rasmus\n42\tEverclear\n42\tBrain\n42\tFrankie Valli and the Four Seasons\n42\tWhitesnake\n41\tGipsy Kings\n41\tJoss Stone\n41\tポルノグラフィティ\n41\tCollective Soul\n41\tFour Tet\n41\tDJ Krush\n41\tSex Pistols\n41\tAdd N To (X)\n41\t近藤浩治\n41\tSnap!\n41\tBrian Eno\n41\tCrosby, Stills & Nash\n41\tChimaira\n41\tMethod Man & Redman\n41\tMONDO GROSSO\n41\tDemon Hunter\n41\tGolden Boy with Miss Kittin\n41\tCyndi Lauper\n41\tSteve Miller Band\n41\tNusrat Fateh Ali Khan\n41\tSuzanne Vega\n41\tThe Dave Brubeck Quartet\n41\tStory of the Year\n41\tSkinny Puppy\n40\tMatt Darey's Mash Up\n40\tJohnny Cash & Willie Nelson\n40\tApollo 440\n40\tAdema\n40\tThe Doobie Brothers\n40\tWay Out West\n40\tHooverphonic\n40\tI Can Make a Mess Like Nobody's Business\n40\tSolid Base\n40\tTwiztid\n40\tProcol Harum\n40\tFront 242\n40\tWeen\n40\tSixpence None the Richer\n40\tEvery Time I Die\n40\tLee \"Scratch\" Perry & The Upsetters\n40\tThe Wallflowers\n40\tElectric Six\n40\tChristina Milian\n40\tSteve Harley & Cockney Rebel\n40\tJoe Satriani\n39\tImmortal\n39\t40 Below Summer\n39\tObituary\n39\tCounting Crows & Bløf\n39\tSkandaali\n39\tMagnus Uggla\n39\tJohn Mellencamp\n39\tGroove Coverage\n39\tTechnotronic\n39\tScreamin' Jay Hawkins\n39\tSaliva\n39\tEvergrey\n39\tAvain\n39\tOriga\n39\tAlan Silvestri\n39\tTiamat\n39\tThe SugarCubes\n39\tPuddle of Mudd\n39\tThe Blood Brothers\n39\tBruce Dickinson\n39\tEcho & the Bunnymen\n39\tAlison Krauss & Union Station\n39\tIan van Dahl\n39\tAlphaville\n39\tKosheen\n39\tAll Saints\n39\tJanet Jackson\n39\tJohn Coltrane\n39\tStereolab\n39\tThe Hollies\n38\tGackt\n38\tMadness\n38\tThe Venus In Furs\n38\t...And Oceans\n38\tRefused\n38\tShadows Fall\n38\tCiara\n38\t岩垂徳行\n38\tJane Birkin & Serge Gainsbourg\n38\tBorknagar\n38\tSatyricon\n38\tBerryz工房\n38\tN-Trance\n38\tYUP\n38\tDiana Krall\n38\tGrateful Dead\n38\tAgoraphobic Nosebleed\n38\tTom Petty\n38\tThe Future Sound of London\n38\tCold\n38\tEternal Tears of Sorrow\n38\tAjattara\n38\tBOYSETSFIRE\n38\t陶喆\n38\tDiana Ross and the Supremes\n38\tIsaac Hayes\n37\tRachid Taha, Khaled & Faudel\n37\tJoe Strummer and the Mescaleros\n37\t田中公平\n37\tA Guy Called Gerald\n37\tDie Toten Hosen\n37\tUriah Heep\n37\tGuster\n37\tCMX\n37\tPitchshifter\n37\tToad the Wet Sprocket\n37\tJedi Mind Tricks\n37\tDamien Rice\n37\tLiz Phair\n37\tSeigmen\n37\tT. Raumschmiere\n37\tMe'Shell Ndegéocello\n"
+          },
+          {
+            "type": "HTML",
+            "data": "<div class=\"result-alert alert-warning\" role=\"alert\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button><strong>Output is truncated</strong> to 1000 rows. Learn more about <strong>zeppelin.spark.maxResult</strong></div>\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=133",
+              "$$hashKey": "object:14218"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654756384347_1481826900",
+      "id": "paragraph_1654756384347_1481826900",
+      "dateCreated": "2022-06-09T06:33:04+0000",
+      "dateStarted": "2022-06-09T20:49:43+0000",
+      "dateFinished": "2022-06-09T20:49:49+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7778"
+    },
+    {
+      "text": "/*\nThis function transform all mispelled artist name ID to the right ID and the proceed to count the number of time a artist has been lisened to by a user\n*/\n\n// Took from the main zepellin notebook \"MusicRecommender\"\n\ndef buildCounts(rawUserArtistData: Dataset[String], bArtistAlias: Broadcast[Map[Int,Int]]): DataFrame = {\n    rawUserArtistData.map { line =>\n        val Array(userID, artistID, count) = line.split(' ').map(_.toInt)\n        val finalArtistID =\n            bArtistAlias.value.getOrElse(artistID, artistID)\n    (userID, finalArtistID, count)\n    }.toDF(\"user\", \"artist\", \"count\")\n}\n\ndef buildArtistAlias(rawArtistAlias: Dataset[String]): Map[Int,Int] = {\n    rawArtistAlias.flatMap { line =>\n    val Array(artist, alias) = line.split('\\t')\n    if (artist.isEmpty) {\n        None\n    } else {\n        Some((artist.toInt, alias.toInt))\n    }\n    }.collect().toMap\n}\n\n/*\nThis is an optimisation. It ensure that Spark send and hold in memory just one copy for each executor in the cluster.\n*/\nval bArtistAlias = spark.sparkContext.broadcast(buildArtistAlias(rawArtistAlias))\nval trainData = buildCounts(rawUserArtistData, bArtistAlias)\ntrainData.show(3)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:51:41+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-------+-------+-----+\n|   user| artist|count|\n+-------+-------+-----+\n|1000002|      1|   55|\n|1000002|1000006|   33|\n|1000002|1000007|    8|\n+-------+-------+-----+\nonly showing top 3 rows\n\n\u001b[1m\u001b[34mbuildCounts\u001b[0m: \u001b[1m\u001b[32m(rawUserArtistData: org.apache.spark.sql.Dataset[String], bArtistAlias: org.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]])org.apache.spark.sql.DataFrame\u001b[0m\n\u001b[1m\u001b[34mbuildArtistAlias\u001b[0m: \u001b[1m\u001b[32m(rawArtistAlias: org.apache.spark.sql.Dataset[String])scala.collection.Map[Int,Int]\u001b[0m\n\u001b[1m\u001b[34mbArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]]\u001b[0m = Broadcast(403)\n\u001b[1m\u001b[34mtrainData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [user: int, artist: int ... 1 more field]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=134",
+              "$$hashKey": "object:13674"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=135",
+              "$$hashKey": "object:13675"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654788204804_1444279086",
+      "id": "paragraph_1654788204804_1444279086",
+      "dateCreated": "2022-06-09T15:23:24+0000",
+      "dateStarted": "2022-06-09T20:51:41+0000",
+      "dateFinished": "2022-06-09T20:51:45+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7779"
+    },
+    {
+      "text": "// Count the number of times that artists appear over the users\n// => How many users listen to a certain artist ?\n\nval artistApparition = trainData.groupBy($\"artist\").count().orderBy($\"count\".desc)\nartistApparition.show(3)\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:56:52+0000",
+      "progress": 96,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-------+-----+\n| artist|count|\n+-------+-----+\n|    979|45714|\n|   4267|43943|\n|1000113|41063|\n+-------+-----+\nonly showing top 3 rows\n\n\u001b[1m\u001b[34martistApparition\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [artist: int, count: bigint]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=136",
+              "$$hashKey": "object:13912"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654788977062_30119181",
+      "id": "paragraph_1654788977062_30119181",
+      "dateCreated": "2022-06-09T15:36:17+0000",
+      "dateStarted": "2022-06-09T20:52:02+0000",
+      "dateFinished": "2022-06-09T20:52:54+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7780"
+    },
+    {
+      "text": "// Join with other DF to have more information as name and artistID\n\nval artistNameApparition = artistApparition.join(artistByID,artistApparition(\"artist\")===artistByID(\"id\")).orderBy($\"count\".desc)\nartistNameApparition.show(3)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:56:54+0000",
+      "progress": 97,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-------+-----+-------+-----------+\n| artist|count|     id|       name|\n+-------+-----+-------+-----------+\n|    979|45714|    979|  Radiohead|\n|   4267|43943|   4267|  Green Day|\n|1000113|41063|1000113|The Beatles|\n+-------+-----+-------+-----------+\nonly showing top 3 rows\n\n\u001b[1m\u001b[34martistNameApparition\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [artist: int, count: bigint ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=137",
+              "$$hashKey": "object:13950"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654789956055_124861525",
+      "id": "paragraph_1654789956055_124861525",
+      "dateCreated": "2022-06-09T15:52:36+0000",
+      "dateStarted": "2022-06-09T20:56:54+0000",
+      "dateFinished": "2022-06-09T20:57:52+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7781"
+    },
+    {
+      "text": "// Combine all data, drop certain not used (duplicated) columns as id and order descending by number of misspelled artist\n\nval finalResult = artistNameApparition.drop($\"artist\").withColumnRenamed(\"count\",\"userByArtist\").join(misspelledArtistDF.withColumnRenamed(\"count\",\"misspelledByArtist\"),\n            artistNameApparition(\"id\")===misspelledArtistDF(\"goodid\")).drop(\"goodid\").orderBy($\"misspelledByArtist\".desc)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T20:59:33+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mfinalResult\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [userByArtist: bigint, id: int ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654790275992_1724878446",
+      "id": "paragraph_1654790275992_1724878446",
+      "dateCreated": "2022-06-09T15:57:55+0000",
+      "dateStarted": "2022-06-09T20:58:08+0000",
+      "dateFinished": "2022-06-09T20:58:09+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7782"
+    },
+    {
+      "text": "// For each artist, calculate the misspelled/correct spelled ratio\n\nval finalRatioPirate = finalResult.map(v=> (v.getInt(1), v.getString(2), v.getLong(3).toDouble/v.getLong(0).toDouble)).toDF(\"artistid\",\"artist\",\"ratioPirate\")",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T21:03:17+0000",
+      "progress": 96,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mfinalRatioPirate\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [artistid: int, artist: string ... 1 more field]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654799939528_1054980352",
+      "id": "paragraph_1654799939528_1054980352",
+      "dateCreated": "2022-06-09T18:38:59+0000",
+      "dateStarted": "2022-06-09T21:00:16+0000",
+      "dateFinished": "2022-06-09T21:00:17+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7783"
+    },
+    {
+      "text": "// Show the ratio for the 10 most misspelled (overall) artist\n// The aim is to demonstrate that the most misspelled could have a huge number of users and the ratio could be small\nfinalRatioPirate.show(10)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T21:02:24+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+-----------+--------------------+\n|artistid|     artist|         ratioPirate|\n+--------+-----------+--------------------+\n| 1000024|  Metallica| 0.03698470234072618|\n| 1034635|  [unknown]|0.025337613753946567|\n|      82| Pink Floyd| 0.02179987004548408|\n| 1003694| South Park| 0.09449726303658888|\n|    1854|Linkin Park|0.024572969733293377|\n| 1000113|The Beatles|0.015317926113532864|\n|     930|     Eminem| 0.02128524945770065|\n|     979|  Radiohead|0.013562584766154788|\n| 1000107|Iron Maiden|0.033005531653349726|\n|     976|    Nirvana|0.014526138919753923|\n+--------+-----------+--------------------+\nonly showing top 10 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=139",
+              "$$hashKey": "object:14121"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=140",
+              "$$hashKey": "object:14122"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654791797197_2069974661",
+      "id": "paragraph_1654791797197_2069974661",
+      "dateCreated": "2022-06-09T16:23:17+0000",
+      "dateStarted": "2022-06-09T21:02:24+0000",
+      "dateFinished": "2022-06-09T21:03:36+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7784"
+    },
+    {
+      "user": "anonymous",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=142",
+              "$$hashKey": "object:14182"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=143",
+              "$$hashKey": "object:14183"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654808556264_1416702390",
+      "id": "paragraph_1654808556264_1416702390",
+      "dateCreated": "2022-06-09T21:02:36+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:14019",
+      "text": "// Show the artist with the biggest ration misspelled/correct spelled\n\nfinalRatioPirate.orderBy($\"ratioPirate\".desc).show(10)",
+      "dateUpdated": "2022-06-09T21:03:46+0000",
+      "dateFinished": "2022-06-09T21:04:58+0000",
+      "dateStarted": "2022-06-09T21:03:46+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+--------------------+------------------+\n|artistid|              artist|       ratioPirate|\n+--------+--------------------+------------------+\n| 7016732|               Hopee|               2.4|\n| 9946978|Christoph Poppen ...|               2.0|\n| 1293381|          Peter Silk|               2.0|\n| 6670976|                 b0x|               2.0|\n| 6874890|Enríquez de Valde...|               2.0|\n| 7023311|The Frankie Orteg...|               2.0|\n| 6854794|  La famille Dembélé|               2.0|\n| 6856395|     Brahima Dembélé|               2.0|\n| 6841333|               Joten|               2.0|\n| 6757930|         Vortechtral|1.6666666666666667|\n+--------+--------------------+------------------+\nonly showing top 10 rows\n\n"
+          }
+        ]
+      }
+    },
+    {
+      "user": "anonymous",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=172",
+              "$$hashKey": "object:15139"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=173",
+              "$$hashKey": "object:15140"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654808762342_1321627867",
+      "id": "paragraph_1654808762342_1321627867",
+      "dateCreated": "2022-06-09T21:06:02+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:14223",
+      "text": "val checkArtistRecurrenceForBigRatio = finalRatioPirate.drop(\"artist\").join(artistNameApparition,finalRatioPirate(\"artistid\")===artistNameApparition.drop(\"artist\")(\"id\")).withColumnRenamed(\"count\",\"artistApparition\")\nval test = checkArtistRecurrenceForBigRatio.join(misspelledByArtistNameDF, checkArtistRecurrenceForBigRatio.drop(\"artistid\").drop(\"artist\")(\"id\")===misspelledByArtistNameDF.withColumnRenamed(\"name\",\"artistName\").drop(\"badid\")(\"goodid\"))\n        .orderBy($\"ratioPirate\".desc)\ntest.withColumnRenamed(\"count\",\"misspelledByArtist\")\ntest.drop(\"id\").drop(\"artist\").drop(\"goodid\").withColumnRenamed(\"count\",\"misspelledCount\")show(10)",
+      "dateUpdated": "2022-06-09T21:40:00+0000",
+      "dateFinished": "2022-06-09T21:39:17+0000",
+      "dateStarted": "2022-06-09T21:37:50+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+------------------+----------------+---------------+\n|artistid|       ratioPirate|artistApparition|misspelledCount|\n+--------+------------------+----------------+---------------+\n| 7016732|               2.4|               5|             12|\n| 9946978|               2.0|               1|              2|\n| 7023311|               2.0|               1|              2|\n| 6874890|               2.0|               1|              2|\n| 6670976|               2.0|               1|              2|\n| 1293381|               2.0|               1|              2|\n| 6841333|               2.0|               1|              2|\n| 6854794|               2.0|               1|              2|\n| 6856395|               2.0|               1|              2|\n| 6757930|1.6666666666666667|               3|              5|\n+--------+------------------+----------------+---------------+\nonly showing top 10 rows\n\n\u001b[1m\u001b[34mcheckArtistRecurrenceForBigRatio\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [artistid: int, ratioPirate: double ... 4 more fields]\n\u001b[1m\u001b[34mtest\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [artistid: int, ratioPirate: double ... 8 more fields]\n"
+          }
+        ]
+      }
+    },
+    {
+      "user": "anonymous",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "multiBarChart",
+              "height": 300,
+              "optionOpen": true,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "artistid": "string",
+                      "artist": "string",
+                      "ratioPirate": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "rotate",
+                  "stacked": false
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "artist",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "ratioPirate",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=109",
+              "$$hashKey": "object:14974"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=110",
+              "$$hashKey": "object:14975"
+            },
+            {
+              "jobUrl": "http://e7c7ef8a225c:4040/jobs/job?id=111",
+              "$$hashKey": "object:14976"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654806215972_1806126381",
+      "id": "paragraph_1654806215972_1806126381",
+      "dateCreated": "2022-06-09T20:23:35+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:11046",
+      "text": "// Graph over the 1000 first ratio\n// As seen before, the biggest ratio are not significant because of the small number of listener and propably because of the lack into the dataset => value missing\n\nz.show(finalRatioPirate)",
+      "dateUpdated": "2022-06-09T21:33:52+0000",
+      "dateFinished": "2022-06-09T20:23:50+0000",
+      "dateStarted": "2022-06-09T20:23:49+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TABLE",
+            "data": "artistid\tartist\tratioPirate\n1000024\tMetallica\t0.03698470234072618\n1034635\t[unknown]\t0.025337613753946567\n82\tPink Floyd\t0.02179987004548408\n1003694\tSouth Park\t0.09449726303658888\n1854\tLinkin Park\t0.024572969733293377\n1000113\tThe Beatles\t0.015317926113532864\n930\tEminem\t0.02128524945770065\n979\tRadiohead\t0.013562584766154788\n1000107\tIron Maiden\t0.033005531653349726\n976\tNirvana\t0.014526138919753923\n1182\tDelerium\t0.07138019775159149\n1205\tU2\t0.012909319899244332\n1274\tRed Hot Chili Peppers\t0.012481970487074227\n4061\tMarilyn Manson\t0.019422812643151627\n1001646\tThe Smashing Pumpkins\t0.014949053344145542\n1000323\tGuns N' Roses\t0.01746965018400237\n2003588\tKoЯn\t0.016859761369531386\n1256375\t浜崎あゆみ\t0.06637931034482758\n1247272\t植松伸夫\t0.05128557679087034\n1008093\tm-flo\t0.21843207660083783\n1394\tLed Zeppelin\t0.01241554343725349\n831\tNine Inch Nails\t0.01393388236212482\n5705\tRammstein\t0.014794861168669706\n1000881\tHoward Shore\t0.04463269692755089\n606\tThe Rolling Stones\t0.015298361510713199\n1000591\tThe Chemical Brothers\t0.014373546028580923\n4267\tGreen Day\t0.007782809548733587\n15\tBjörk\t0.014227380184826994\n969\tLimp Bizkit\t0.018942246422985577\n121\tBeastie Boys\t0.012320406383865954\n1275996\tR.E.M.\t0.011036996286618072\n6910087\tПетр Ильич Чайковский\t0.37093023255813956\n5810\tThe Prodigy\t0.011526434441131553\n1004162\tIn Flames\t0.026955331165497178\n1001582\tApocalyptica\t0.031445273130417256\n1495\tJohann Sebastian Bach\t0.039447988543158445\n4569\tSimon & Garfunkel\t0.014992729278443565\n1177\tColdplay\t0.007677742328742251\n873\tTool\t0.01546932354483482\n3402\tPearl Jam\t0.01449702688092781\n1014421\tRage Against the Machine\t0.011842478809263089\n1001819\t2Pac\t0.02127504553734062\n1001412\tblink-182\t0.010531066646607492\n1000052\tThe Offspring\t0.011768204605319058\n2017\tCypress Hill\t0.02416177886719776\n4468\tSystem of a Down\t0.009897360703812317\n1000157\tAC/DC\t0.013427919939194325\n829\tNas\t0.026121241991128634\n189\tThe Cure\t0.009045432741725486\n441\tAphex Twin\t0.0157617164089656\n3327\tWeezer\t0.008191851921333208\n1001169\tNick Cave and the Bad Seeds\t0.02530423024917906\n4163\tBritney Spears\t0.015173452249956565\n313\tDavid Bowie\t0.009521368147361483\n4377\tLudwig van Beethoven\t0.02078484872803146\n581\tDepeche Mode\t0.012008377938096346\n1004028\tNotorious B.I.G.\t0.03395355154149124\n1000781\tBasement Jaxx\t0.01865867366054702\n250\tOutkast\t0.00981452549773665\n530\tDaft Punk\t0.01183145032245551\n2085\tSantana\t0.023045424245309972\n1007614\tJay-Z\t0.014323922734026747\n1000123\tIncubus\t0.009532546266751755\n1000062\tFoo Fighters\t0.008611567232256888\n868\tThe Roots\t0.02193596564921124\n4209\tDream Theater\t0.02115105301379811\n1004113\tChildren of Bodom\t0.026300872916902845\n1008419\tNightwish\t0.015544041450777202\n4605\tSnoop Dogg\t0.014083644602290123\n1000088\tCounting Crows\t0.012879640044994376\n1000429\tJohnny Cash\t0.011061198860068589\n1330\tTori Amos\t0.01564207650273224\n2\tAir\t0.00958961474036851\n1390\tJohn Williams\t0.024823848238482386\n2814\t50 Cent\t0.012998859749144812\n3656\tNo Doubt\t0.010774634516802734\n793\tBob Dylan\t0.010355839416058395\n59\tMassive Attack\t0.010897994768962511\n2600\tFear Factory\t0.02702038811102923\n1238128\tThe Mamas & the Papas\t0.03690536651430506\n1399\tMadonna\t0.011672942442173212\n1006016\tEvanescence\t0.009776976796575805\n4154\tBlack Sabbath\t0.01458966565349544\n1001531\tBelle and Sebastian\t0.012037399921616931\n1000014\tPantera\t0.01907138401212013\n1018110\tLars Winnerbäck\t0.10446297204512016\n4531\t\"Weird Al\" Yankovic\t0.021468002453485995\n1002181\tBlank & Jones\t0.059948615472452185\n1001655\tThe Herbaliser\t0.0540962288686606\n1005176\tIced Earth\t0.03687943262411347\n1809\tBone Thugs-N-Harmony\t0.046030687124749836\n1890\tMoby\t0.00788697882767334\n1004077\tCradle of Filth\t0.025516554642768235\n1501\tWolfgang Amadeus Mozart\t0.022248882102737486\n6914803\tJay-Z and Linkin Park\t0.019847477512710206\n1005820\t...And You Will Know Us by the Trail of Dead\t0.020837631524654426\n5734\tRob Zombie\t0.01831935836675173\n1307\tThe White Stripes\t0.006706008583690987\n1001779\tModest Mouse\t0.007164458525345622\n5477\tDeftones\t0.011933317342288318\n699\tDe La Soul\t0.02709020902090209\n3437\tEnigma\t0.027399185049880568\n1270\tQueen\t0.006803675387528933\n2823\tAlanis Morissette\t0.01329475787008335\n1011818\tA Tribe Called Quest\t0.024889236382590565\n1001348\tATB\t0.026981212035598248\n1411\tThe Clash\t0.009022627426897823\n1784\tBlack Eyed Peas\t0.01083485401459854\n4241\tFatboy Slim\t0.009975193962104818\n1001861\tCreedence Clearwater Revival\t0.01571987024869001\n1000508\tMe First and the Gimme Gimmes\t0.02460410940976312\n1000239\tBlind Guardian\t0.02808394987165937\n1196\tElvis Presley\t0.013833110218652387\n1003681\tThe Mars Volta\t0.009620357918692458\n599\tNOFX\t0.014297992030627392\n478\tBoards of Canada\t0.015903530234183852\n5409\tAFI\t0.012584772425365308\n386\tThe Presidents of the United States of America\t0.019770267285177823\n4250\tFrank Zappa\t0.02262100341210666\n1223\tJimi Hendrix\t0.008850877629158172\n1259\tOasis\t0.006521340904927643\n1000139\tMuse\t0.006681180091584716\n231\tBlur\t0.007614321769260384\n234\tPixies\t0.007071068208000636\n463\tThe Smiths\t0.009062980030721967\n1000737\tMichael Jackson\t0.009857429271552684\n1003928\tClint Mansell\t0.02863151083791653\n1000481\tSlipknot\t0.011402656300615484\n1811\tDr. Dre\t0.013967145464645662\n729\tMissy Elliott\t0.01969439728353141\n1478\tX-Ecutioners\t0.060082872928176795\n1247118\t宇多田ヒカル\t0.036447423544197735\n1008164\tRun-D.M.C.\t0.022425570305451732\n1000998\tDestiny's Child\t0.016133544716963537\n1003278\tL'Arc~en~Ciel\t0.052279635258358666\n1000569\tQueens of the Stone Age\t0.007291225095379398\n1207868\tSinéad O'Connor\t0.03062132811109133\n1003950\tDark Tranquillity\t0.03236797274275979\n61\tAutechre\t0.025384500522622068\n1002270\tScooter\t0.021736334405144695\n1005975\tDimmu Borgir\t0.0225140712945591\n344\tThe Doors\t0.008580622095101895\n1000009\tA Perfect Circle\t0.008210826490977924\n1000597\tBon Jovi\t0.013341906445909019\n1019931\tUsher\t0.012620468104635154\n1001249\tThe Cranberries\t0.0113503473894201\n1009898\tA Silver Mt. Zion\t0.04466702761234434\n2073327\tAntonín Dvořák\t0.0966411314083677\n1006039\tBT\t0.025818639798488665\n28\tNew Order\t0.009476744186046512\n1000570\tBad Religion\t0.012052647145814848\n1000557\tFaithless\t0.014965112008813808\n1000031\t3 Doors Down\t0.00964765100671141\n1000699\tSarah McLachlan\t0.013797861331493619\n1238013\tDJ Tiësto\t0.022006920415224913\n1000292\tSoulfly\t0.03479409821625193\n1008663\tN*E*R*D\t0.01319084989146769\n1001048\tAvril Lavigne\t0.008643946484611573\n1000790\tDave Matthews Band\t0.01088841112421111\n5661\tMillencolin\t0.0180576455608288\n437\tAmon Tobin\t0.02301224369376014\n2178\tThe Velvet Underground\t0.010483166453867347\n1000130\tBright Eyes\t0.0069697378479248165\n1006332\tHans Zimmer\t0.02819719847189376\n2636\tSlayer\t0.01415961750643619\n1305866\t光田康典\t0.05600292825768668\n1000982\tEnya\t0.013521928654034338\n1000639\tAlice in Chains\t0.013955637707948243\n78\tSublime\t0.00938228071280146\n1261311\tBeyoncé\t0.017151465986788735\n352\tBeck\t0.005072662462297779\n1002575\tKylie Minogue\t0.011149032992036406\n1011083\tSonata Arctica\t0.021930478890049232\n1001419\tOpeth\t0.016984402079722703\n53\tWu-Tang Clan\t0.017573834513058335\n1250079\t久石譲\t0.048273550117331546\n1000263\tJimmy Eat World\t0.0060551404277248136\n742\tPlacebo\t0.00663030189034139\n1295531\t菅野よう子\t0.01945901186861717\n647\tBusta Rhymes\t0.017528483786152498\n3324\tStone Temple Pilots\t0.012332534823884305\n1007902\tBoA\t0.04005763688760807\n1003176\tDashboard Confessional\t0.008551775422941067\n5630\tLooptroop\t0.06500235515779557\n118\tDJ Shadow\t0.012261217236783651\n1250104\tFrédéric Chopin\t0.03065304309195913\n1061806\tProbot\t0.054559936280366386\n1000952\tThe Strokes\t0.006378916980956372\n1000188\tDire Straits\t0.011144553811112014\n1246136\tGeorg Friedrich Händel\t0.058319039451114926\n754\tSigur Rós\t0.009062437529153061\n1002457\tThe Beach Boys\t0.0072912669261553644\n1825\tMegadeth\t0.013666255651459104\n1327\tJamiroquai\t0.010214269257353506\n1000028\tLynyrd Skynyrd\t0.012125079770261647\n5837\tUnderworld\t0.011973875181422351\n5692\tOzzy Osbourne\t0.011165089917327196\n1001384\tStatic-X\t0.017115233864645935\n1236878\tThe Dillinger Escape Plan\t0.019021344562218673\n1006878\tGigi D'Agostino\t0.030191288315280018\n1000251\tRobbie Williams\t0.00985520430596619\n1002480\tBob Marley & the Wailers\t0.013153900637458261\n1000010\tAerosmith\t0.007227040249054926\n1091\tGang Starr\t0.027970511708586297\n4303\tJennifer Lopez\t0.014875461254612546\n242\tMiles Davis\t0.010949529512403765\n1235281\tThe Who\t0.006999559082892416\n2439\tHiM\t0.010209003215434083\n1002328\tThe Corrs\t0.019080528846153848\n1004079\tArch Enemy\t0.02488732118361748\n1255555\t坂本真綾\t0.059540553211439286\n1428\tEric Clapton\t0.007854536458655451\n4481\tThe Hives\t0.00791239397392075\n304\tEnnio Morricone\t0.016075102880658436\n1251\tMorcheeba\t0.015183053752908045\n1000114\tPennywise\t0.01481658501613096\n1000899\tRush\t0.0176161386560591\n1248477\t林原めぐみ\t0.06805708013172337\n1000329\tBloodhound Gang\t0.009873397563500278\n4449\tSepultura\t0.018117543084401236\n1082784\tLaveerre\t0.29901960784313725\n1003313\t1 Giant Leap\t0.10347752332485156\n1000522\tBruce Springsteen\t0.010064345817521862\n1253284\tCafé Del Mar\t0.0547330641543293\n1266817\tStan Getz & João Gilberto\t0.07687420584498093\n1022155\tG3\t0.15374841168996187\n1000140\t(hed) Planet Earth\t0.03617726861621948\n70\tTricky\t0.01903553299492386\n1003342\tT. Rex\t0.019986675549633577\n1002080\tCrosby, Stills, Nash & Young\t0.028680688336520075\n1257158\t椎名林檎\t0.06025316455696202\n1002097\tThe Crystal Method\t0.011958597125916993\n1001864\tRöyksopp\t0.012720470336718333\n5606\tLess Than Jake\t0.01211125936569845\n1012919\tRZA\t0.01887697968325068\n1006270\tTalib Kweli\t0.022335794056407343\n1233606\tThe Jesus and Mary Chain\t0.016540510232688533\n1037970\tKanye West\t0.009378477189635987\n4246\tFleetwood Mac\t0.011776547559134374\n1194\tLenny Kravitz\t0.009755690819644792\n1246073\t梶浦由記\t0.044167610419026046\n1008485\tSiouxsie and the Banshees\t0.025495750708215296\n2132\tGarbage\t0.006058409279204639\n1011299\tStratovarius\t0.025193798449612403\n6684730\t石井妥師\t0.0663265306122449\n5811\tThe Pogues\t0.02217125382262997\n1017478\tSoilwork\t0.023937267849773007\n1193\tElliott Smith\t0.005971993410214168\n1838\tThe Flaming Lips\t0.006632829622793863\n1000138\tMachine Head\t0.02120141342756184\n1000698\tShania Twain\t0.02191043628675764\n1001066\tThe Ataris\t0.009862444848170258\n1200\tFaith No More\t0.010584958217270195\n1570\tSting\t0.010049365303244006\n1000200\tAlicia Keys\t0.012656822471411125\n1001365\tThey Might Be Giants\t0.010576120233787921\n1000527\tLoreena McKennitt\t0.03488731089842544\n1786\tBob Marley\t0.00776483638380477\n202\tOrbital\t0.011242722344910661\n1000017\tJudas Priest\t0.01365354138729733\n1244705\tThe 5.6.7.8's\t0.016928657799274487\n1000183\tDisturbed\t0.010130510176143104\n1233196\tThe Postal Service\t0.004276138377378843\n3150\tThe Police\t0.008285437038142867\n1000033\tGorillaz\t0.005983827493261456\n1005290\tt.A.T.u.\t0.012149737302977233\n1000632\tGoo Goo Dolls\t0.008273086382947008\n1007205\tAaliyah\t0.020366598778004074\n1319\tZero 7\t0.007507921201267392\n393\tVarious Artists\t0.010133878765340274\n122\tDinosaur Jr.\t0.02246723528188059\n2060894\tThe Section Quartet\t0.0696774193548387\n1002470\tElton John\t0.007117906808146049\n1002128\tTaking Back Sunday\t0.008014380945247547\n1235094\tThe 6ths\t0.09427312775330396\n1009291\tWithin Temptation\t0.01384933989127621\n6912535\tJoss Whedon & Christophe Beck\t0.17627677100494235\n1002398\tMelvins\t0.05112279025322503\n4567\tNickelback\t0.008742268041237114\n1025118\tErik Satie\t0.05216095380029806\n1257296\tYoussou N'Dour & Neneh Cherry\t0.17073170731707318\n1015157\tGodspeed You! Black Emperor\t0.012905604719764012\n1299851\tモーニング娘。\t0.07133058984910837\n377\tPrimus\t0.014608793369855317\n1007265\tWilliam Shatner\t0.019567262464722485\n4192\tDeath Cab for Cutie\t0.004510365166102871\n1317\tYann Tiersen\t0.016954678839256603\n1001909\tInterpol\t0.004200823850891146\n1004421\tKMFDM\t0.020287571400433326\n1000340\tAt the Drive-In\t0.008130081300813009\n4496\tThe Streets\t0.0062896922325354175\n1005059\tNelly Furtado\t0.011911645657453451\n1246742\tL'Âme Immortelle\t0.06719367588932806\n153\tNeil Young\t0.008500708392366031\n1000473\tThe Dust Brothers\t0.025024777006937563\n813\tJurassic 5\t0.011623892277592357\n1233770\tThe Shins\t0.004362850971922246\n942\tXzibit\t0.01657639914656163\n1000985\tBarenaked Ladies\t0.009619084263178146\n1001233\tSheryl Crow\t0.010482180293501049\n718\tDropkick Murphys\t0.011811953697141508\n1000115\tPapa Roach\t0.007575183698204682\n1000424\tAlien Ant Farm\t0.009954210631096954\n1000112\tAlkaline Trio\t0.009035056017347307\n1003968\tDeath\t0.030947170990934667\n1161\tVangelis\t0.018782014797951052\n1000054\tJohn Lennon\t0.0075210818202537414\n1008452\tBomfunk MC's\t0.02132701421800948\n1162\tVan Halen\t0.009311512415349887\n600\tRancid\t0.00932115619998117\n1003029\tManowar\t0.021012006861063463\n1000525\tPaul Van Dyk\t0.015037593984962405\n1000495\tLacuna Coil\t0.013539921831379118\n1001597\tP.O.D.\t0.009924288929813792\n1651\tUNKLE\t0.015296367112810707\n1967\tThievery Corporation\t0.007392576620976436\n3619\tAnathema\t0.026330224904004388\n1025836\tFrank Klepacki\t0.07505863956215794\n2897\tDeep Purple\t0.008860175357637286\n4622\tThe Get Up Kids\t0.010904134484325307\n1017044\tX JAPAN\t0.040807560137457045\n1234421\tSergio Mendes & Brasil '66\t0.08348134991119005\n1271441\t布袋寅泰\t0.014468216099738342\n1183\tDido\t0.006012412723041117\n1823\tEve\t0.026886383347788378\n1237949\tBooker T. & the MG's\t0.03533434650455927\n1014520\tTrans-Siberian Orchestra\t0.032520325203252036\n3287\tBryan Adams\t0.009044435705859222\n1003965\tFinntroll\t0.02039459099977832\n739\tDMX\t0.011411560406846936\n3379\tPet Shop Boys\t0.011668162584946788\n1\tPortishead\t0.005901044030866999\n1014609\tMötley Crüe\t0.017057169634489222\n1004584\tMeshuggah\t0.021256715720626023\n2070\tEinstürzende Neubauten\t0.0297969875573019\n1000230\tGroove Armada\t0.009503695881731784\n1017893\tChristina Aguilera\t0.008506616257088847\n1000156\tGuano Apes\t0.013416815742397137\n1262\tPJ Harvey\t0.00835421888053467\n1008583\tOl' Dirty Bastard\t0.020081227436823106\n1000127\tAudioslave\t0.005864522930943595\n4185\tD12\t0.009579162630502637\n3195\tX-Press 2\t0.05348557692307692\n1000136\tRoxette\t0.015543136570031436\n1004658\tDanny Elfman\t0.01632428466617755\n1000574\tChad Kroeger\t0.032037437005039596\n4471\tTenacious D\t0.0054890835080794375\n1844\tTom Waits\t0.007191919191919192\n1000199\tType O Negative\t0.01549982584465343\n1007286\tDir en grey\t0.03463035019455253\n223\tTalking Heads\t0.007448159119763013\n1003162\tBrooklyn Bounce\t0.03490678302261008\n1319489\tFranz Joseph Haydn\t0.19599109131403117\n2536\tMary J. Blige\t0.023157894736842106\n1003282\tInfected Mushroom\t0.01662259161314696\n1013126\tSalt-n-Pepa\t0.03167091372406261\n1003102\tFerry Corsten\t0.027893555626803464\n1015982\tAntonio Vivaldi\t0.020027624309392266\n1008798\tµ-Ziq\t0.038821954484605084\n1005316\tArmin Van Buuren\t0.029341521664960766\n40\tKraftwerk\t0.008535132989281461\n1015064\tConjure One\t0.055163566388710714\n1004317\tHall & Oates\t0.02182187262116214\n1016335\tRhapsody\t0.018926056338028168\n949\tBen Folds Five\t0.0061332192269291114\n4221\tEels\t0.00584916047343793\n4156\tBlondie\t0.007183908045977011\n1004294\tThursday\t0.008073041806823642\n1000201\tBush\t0.006412703259790824\n542\tPrimal Scream\t0.012\n1012167\tTurbonegro\t0.01707317073170732\n1045459\tJAM Project\t0.16216216216216217\n1000260\tMotörhead\t0.010349926071956629\n5270\tRJD2\t0.012128212532486284\n275\tDrowning Pool\t0.013452914798206279\n1003249\tLudacris\t0.007949430131213485\n5494\tDuran Duran\t0.006587824430510358\n1007903\tMaroon 5\t0.003923978819969743\n1003159\tBilly Joel\t0.0069297726696526665\n1000573\tCat Stevens\t0.009354323522701347\n792\tBlack Star\t0.026657997399219768\n1231740\tFranz Ferdinand\t0.0026661464429704775\n1001052\tQueen & David Bowie\t0.031968810916179334\n1256628\t王菲\t0.04904306220095694\n228\tPavement\t0.007912766573386085\n18\tIggy Pop\t0.008972535288324762\n3083\tPhil Collins\t0.008514664143803218\n388\tJeff Buckley\t0.005969049373618276\n1400\tManic Street Preachers\t0.008843760235833607\n1003296\tMr. Scruff\t0.02122641509433962\n1250233\tIron & Wine\t0.005306256141500164\n57\tSquarepusher\t0.009471468662301216\n1000681\tKillswitch Engage\t0.01048951048951049\n1238467\tThe Soggy Bottom Boys\t0.02782548952250086\n1241121\tIll Niño\t0.018088432335864227\n1002287\tJohn Mayer\t0.007019672415287287\n1240025\tThe B-52's\t0.0157251019219569\n1005150\tNapalm Death\t0.028672566371681415\n1001772\tSuicidal Tendencies\t0.03156664068589244\n1303\tThe Kinks\t0.006039559112184811\n1008106\tBehemoth\t0.031335683509596556\n1008824\tDance Dance Revolution\t0.04206098843322818\n1003178\tHatebreed\t0.01799775028121485\n1259297\t安室奈美恵\t0.060744115413819286\n4609\tStaind\t0.007188426633120676\n1204\tFrank Sinatra\t0.00631911532385466\n5715\tReel Big Fish\t0.00782410617014955\n3292\tEagles\t0.006188797493145319\n4224\tEdvard Grieg\t0.03531515422440769\n1289\tSoundgarden\t0.0068197513812154695\n1004536\tThe Libertines\t0.006710831971091801\n1003258\tK's Choice\t0.02008238928939238\n4371\tLostprophets\t0.006508135168961202\n1007712\tOrchestral Manoeuvres In The Dark\t0.02137571937517128\n1089805\tPaco De Lucia, Al Di Meola, John McLaughlin\t0.14922480620155038\n1195\tElvis Costello\t0.008327925589444084\n1006384\tRufus Wainwright\t0.0070038202655994175\n5672\tNancy Sinatra\t0.007172131147540984\n1000427\tNew Found Glory\t0.0069163747417587355\n1004496\tIce Cube\t0.01308188922867822\n1001141\tManu Chao\t0.012566137566137565\n1010029\tDanzig\t0.018134096874254355\n1014531\tBlue Öyster Cult\t0.011663597298956415\n4465\tSum 41\t0.004942767950052029\n1288217\tScorpions & Berliner Philharmoniker\t0.2835820895522388\n1991\tCake\t0.004357548305716415\n733\tNorah Jones\t0.005538551231598892\n1000338\tCoal Chamber\t0.022080185938407902\n1014931\tMoonspell\t0.02492620531321745\n1238882\tTimo Rautiainen & Trio Niskalaukaus\t0.060897435897435896\n1329237\t松本孝弘\t0.21929824561403508\n1002326\tGood Charlotte\t0.005572065378900446\n1003084\tNatalie Imbruglia\t0.010057663939922221\n1002646\tBlack Label Society\t0.022176227084565348\n1003568\tTears for Fears\t0.007074136955291454\n2717\tArt of Noise\t0.026881720430107527\n825\tMethod Man\t0.01931496265773886\n1000572\tSpineShank\t0.02158273381294964\n4019\tAlice Cooper\t0.009266123054114159\n285\tLeftfield\t0.013391241404270721\n452\tSneaker Pimps\t0.010462321504312174\n1254011\tMilk & Sugar\t0.06654676258992806\n1253195\tLil Jon & The East Side Boyz\t0.012274008956709239\n1000487\tThe Cardigans\t0.005408961333235875\n1101276\tGhostface\t0.02322661644695543\n1234278\tThe (International) Noise Conspiracy\t0.016426193118756937\n1000435\tGenesis\t0.010456408082520843\n1011262\tHammerfall\t0.0161468701614687\n1279485\tCamille Saint-Saëns\t0.07005758157389635\n1026675\tBlackmore's Night\t0.039587852494577004\n1336981\t坂本龍一\t0.03400093153237075\n1013391\tTherion\t0.016820276497695852\n1114234\tBenny Benassi Presents The Biz\t0.0533625730994152\n3318\tPhish\t0.012728857890148213\n1004648\tKreator\t0.025506638714185886\n1008764\tMobb Deep\t0.01926121372031662\n1010227\tAmon Amarth\t0.02144133412745682\n137\tDilated Peoples\t0.016473317865429233\n300\tNick Drake\t0.004934324831468483\n1014536\tKent\t0.011845178511845179\n1003221\tCKY\t0.010208483105679367\n1000445\tHoobastank\t0.004525175270873168\n1018931\tKatatonia\t0.02057374674007534\n1002732\tB.B. King & Eric Clapton\t0.05581761006289308\n1992\tJa Rule\t0.013762357045939136\n2745\tLadytron\t0.00957647693552738\n1006612\tJethro Tull\t0.011699816145746281\n1006633\tCoheed and Cambria\t0.006638217164532954\n1013082\tMasta Ace\t0.04396984924623116\n1000630\tSevendust\t0.015086206896551725\n1968\tR. Kelly\t0.009186351706036745\n1192\tElectric Light Orchestra\t0.00857948277975242\n1326\tBuena Vista Social Club\t0.02046783625730994\n1403\tMarvin Gaye\t0.006815305228312725\n721\tGoldfinger\t0.006429096252755327\n1018746\tKlaus Badelt\t0.02831715210355987\n860\tStevie Wonder\t0.0062061521856449\n54\tPlaid\t0.0203240058910162\n1001180\tGodsmack\t0.008215263721871651\n1003250\tMindless Self Indulgence\t0.013276890513757937\n1002065\tPaul Oakenfold\t0.006280720917531403\n3329\tFluke\t0.015391478920365827\n30\tJane's Addiction\t0.008873456790123456\n1238192\tEmerson, Lake & Palmer\t0.029262086513994912\n1004574\tJustin Timberlake\t0.007444712064812787\n1001115\tAnti-Flag\t0.01129380501577811\n1632\tWarren G\t0.0236275191104934\n1001277\t311\t0.006522781774580336\n1005386\tStabbing Westward\t0.015582034830430797\n1000873\tOur Lady Peace\t0.008312958435207823\n176\tDead Kennedys\t0.008501062632829104\n1260623\t周杰倫\t0.07879490150637311\n3985\tPaul McCartney\t0.012984533129654382\n1004129\tQueensrÿche\t0.020994133991972832\n1257123\tMadvillain\t0.014382402707275803\n1076507\tRun-D.M.C. vs. Jason Nevins\t0.07354555433589462\n296\tSonic Youth\t0.005235602094240838\n1001350\tAnthrax\t0.012994569433669511\n830\tNelly\t0.005806898942624371\n548\tSteve Reich\t0.0487627365356623\n1002152\tFlip & Fill\t0.07966706302021404\n1000094\tThe Bouncing Souls\t0.013726695349313665\n1005143\tThe Haunted\t0.01972328525169267\n1001483\tPowerman 5000\t0.013320079522862823\n1235278\tSvenson & Gielen\t0.058260869565217394\n1009942\tEmiliana Torrini\t0.018621456364647026\n1275800\tJohn Mayall & The Bluesbreakers\t0.11652173913043479\n1001972\tAstral Projection\t0.022945205479452054\n1027610\tJohann Pachelbel\t0.02621283255086072\n1000343\tSkunk Anansie\t0.01409043112513144\n688\tBen Harper\t0.007594936708860759\n1000689\tMariah Carey\t0.00948821161587119\n827\tMos Def\t0.009534816527015313\n1237509\tBilly Bragg & Wilco\t0.02802547770700637\n1234328\tBig Brother & the Holding Company\t0.07244785949506037\n1005055\tCharly Lownoise & Mental Theo\t0.05583756345177665\n5925\tCarl Orff\t0.024363233665559248\n1169\tBadly Drawn Boy\t0.005543889122217555\n1007347\tDerek and the Dominos\t0.027696181284095678\n1003083\tAretha Franklin\t0.008827069680353083\n1006620\tTom Petty and the Heartbreakers\t0.012127894156560088\n3033\tMatchbox Twenty\t0.006745707277187245\n1413\tThe Dandy Warhols\t0.005419164134986452\n1212\tGrandaddy\t0.007852138197632278\n1236976\tCéline Dion\t0.011035653650254669\n2828\tAni DiFranco\t0.009761225409220604\n1006485\tStevie Ray Vaughan and Double Trouble\t0.035173160173160176\n1012793\tSee-Saw\t0.03776873910517141\n1003468\tApoptygma Berzerk\t0.01818181818181818\n1287702\t倖田來未\t0.04281949934123847\n1002516\tJames Horner\t0.019704433497536946\n1000854\tMan Or Astro-man?\t0.05003909304143862\n1011017\t:Wumpscut:\t0.021411843425894948\n1001891\tElvis Costello & the Attractions\t0.023264267539076698\n1004007\tSentenced\t0.018433179723502304\n3153\tThe Sisters of Mercy\t0.015518913676042677\n6737919\tДмитрий Шостакович\t0.11347517730496454\n335\tCocteau Twins\t0.01408760730794629\n1000056\tThe Mighty Mighty Bosstones\t0.010927095782823972\n1000442\tAce of Base\t0.009657461898294854\n1006296\tAfter Forever\t0.029864675688287448\n1004461\tGary Jules\t0.006247520825069417\n1003445\tChicane\t0.012875536480686695\n6864795\tKalyanji & Anandji Shah\t0.10824742268041238\n1000889\tKiss\t0.00830367734282325\n1274328\tCaptain Beefheart & His Magic Band\t0.02090939263192831\n3533\tParadise Lost\t0.01569897832045851\n281\tDead Can Dance\t0.015524889107934944\n1278\tRyan Adams\t0.006615562322797437\n1239287\tThe Lovin' Spoonful\t0.02553708958248885\n1012991\tMF Doom\t0.019119878603945373\n1003888\tShpongle\t0.024294670846394983\n1056752\tBöhse Onkelz\t0.05115511551155116\n1252\tTravis\t0.00473535476972428\n4195\tDef Leppard\t0.010944395410414828\n1007260\tWyclef Jean\t0.010194015126603092\n1002704\tAtreyu\t0.008998548621190131\n1003775\tScorpions\t0.00845608292416803\n1000322\tFun Lovin' Criminals\t0.016555407209612818\n5793\tThe Distillers\t0.010097719869706841\n1058104\tGwen Stefani\t0.004053694843168527\n744\tPublic Enemy\t0.009164663461538462\n1300642\tThe Game\t0.008299319727891157\n1306\tThe Verve\t0.004689061419017603\n1000265\tSilverchair\t0.006909832351608519\n1843\tSugababes\t0.010694249649368864\n1009958\tJadakiss\t0.019482593420632386\n1000272\tToto\t0.011016796098970561\n1004059\tCannibal Corpse\t0.018208955223880597\n1000099\tCreed\t0.0062867154488302586\n6992655\tBonnie 'Prince' Billy & Matt Sweeney\t0.046671767406273906\n1003259\tABBA\t0.007731305449936629\n5698\tPaul McCartney & Wings\t0.024331870761866773\n1001230\tBran Van 3000\t0.019588953114964676\n1000059\tHelloween\t0.014292520247737018\n1003052\tHallucinogen\t0.033296337402885685\n1001487\tFinch\t0.006535235813092255\n1002521\tThomas Newman\t0.016047071409467772\n1008984\tDie Ärzte\t0.016004267804747934\n1011016\tKamelot\t0.024164317358034634\n3170\tTracy Chapman\t0.009937065253395164\n5063\tUB40\t0.012744265080713678\n1044408\tFelix Mendelssohn\t0.05319148936170213\n1295493\tJohn Travolta & Olivia Newton-John\t0.0529567519858782\n1001198\tFountains of Wayne\t0.007681474843169889\n1003505\tAlizée\t0.03167898627243928\n517\tDeltron 3030\t0.016047071409467772\n1007498\t10,000 Maniacs\t0.020679985979670523\n1003168\tZZ Top\t0.008974749011256465\n1002862\tBlue Man Group\t0.020833333333333332\n1003430\tSnow Patrol\t0.0038165469952778316\n1000624\tSoul Coughing\t0.014698555057299452\n1007224\tPizzicato Five\t0.01903839948370442\n1105069\tASIAN KUNG-FU GENERATION\t0.017601431980906922\n1000388\tBen Folds\t0.004871202113606341\n1265455\tSarah Brightman & Andrea Bocelli\t0.10442477876106195\n4129\tAtomic Kitten\t0.018075980392156864\n1016803\tAcda En De Munnik\t0.0575609756097561\n1000428\tBlind Melon\t0.008567208271787297\n1025389\tNasum\t0.03316180674671241\n1001380\tCrazy Town\t0.01357042583060365\n1050035\t*NSYNC\t0.01226215644820296\n5410\tAimee Mann\t0.007229216003988533\n1015111\tAyreon\t0.020293911826452064\n1017959\tMayhem\t0.02537182852143482\n722\tLagwagon\t0.011460185734044654\n1213823\tCyber X\t0.12581344902386118\n1025306\tLamb of God\t0.014717076884039584\n399\tPhilip Glass\t0.017709923664122138\n1044504\tFranz Liszt\t0.048576214405360134\n3042\tMike Oldfield\t0.011524464213505864\n1007530\tSlum Village\t0.035736677115987464\n1010643\tMy Dying Bride\t0.017975402081362345\n1235\tKings of Convenience\t0.006650332516625832\n1036094\tGeorges Bizet\t0.04541832669322709\n1004226\tYellowcard\t0.004258816497310221\n1003496\tHüsker Dü\t0.01828681424446583\n1262034\tTiësto\t0.0196078431372549\n1007379\tKC and the Sunshine Band\t0.01881809177946517\n411\tLeonard Cohen\t0.007166205682675383\n1003361\tMark Knopfler\t0.01827508816928503\n1234329\tThe Gathering\t0.019950997549877492\n1000623\tSavage Garden\t0.008264462809917356\n1001523\tSaves the Day\t0.006406589635053197\n1234433\tK-Ci & JoJo\t0.02450765864332604\n3677\tLouis Armstrong\t0.006408789196612497\n1001809\tSimple Minds\t0.01243615367532756\n217\tThe Stooges\t0.00882445635045698\n3326\tThe Avalanches\t0.00811241489207591\n5602\tKool & the Gang\t0.009707054948864622\n1026440\tMy Chemical Romance\t0.004142011834319527\n1001534\tMisfits\t0.007074279939363315\n1299839\t堀江由衣\t0.0984182776801406\n1003352\tThe Magnetic Fields\t0.006878761822871883\n1280508\t鬼束ちひろ\t0.058577405857740586\n407\tEurythmics\t0.007819044959508517\n1004605\tMorbid Angel\t0.01983411467724486\n1046699\tTeddybears Sthlm\t0.02945902517407606\n1004355\tHarold Faltermeyer\t0.03141062250142775\n1116582\tClaude-Michel Schönberg\t0.18333333333333332\n2194\tJames Brown\t0.005934397928355632\n1864\tGeorge Michael\t0.008134891288270966\n1035110\tJonathan Larson\t0.04799301919720768\n1014530\tTristania\t0.022330491270807957\n807\tErykah Badu\t0.015545505935556812\n1202\tFelix da Housecat\t0.01063624057242313\n1004347\tThe Psychedelic Furs\t0.020491803278688523\n705\tKate Bush\t0.008601814200813263\n1269\tPropellerheads\t0.008735037204788094\n1307484\t中島美嘉\t0.04163454124903624\n1260159\tThe Tamperer\t0.08896210873146623\n1002216\tThe Darkness\t0.0035937707972847066\n425\tLou Reed\t0.005825871183514943\n3161\tThe Yardbirds\t0.022708158116063918\n1001002\tGustav Holst\t0.03545633617859488\n798\tCommon\t0.01487193610575599\n71\tMogwai\t0.0045708481462671405\n9983203\tJoão Gilberto, Stan Getz & Astrud Gilberto\t0.20610687022900764\n1001708\tThin Lizzy\t0.011327879169288861\n1010739\tOOMPH!\t0.02721774193548387\n420\tNeutral Milk Hotel\t0.005408112168252379\n1012155\tBonnie 'Prince' Billy\t0.015629522431259046\n1000158\tOceanlab\t0.03769559032716927\n1312967\tミニモニ。\t0.0742296918767507\n1256700\tМумий Тролль\t0.09028960817717206\n1004160\tCarcass\t0.020384615384615383\n63\tNightmares on Wax\t0.012565196775723092\n1003988\tB.B. King\t0.01664050235478807\n1006411\tBuilt to Spill\t0.007361111111111111\n1001428\tThe Charlatans\t0.016521197007481298\n961\tHarry Connick, Jr.\t0.02774813233724653\n4455\tSmash Mouth\t0.0062786766481526205\n4469\tTangerine Dream\t0.025145067698259187\n1075432\tLeevi and the Leavings\t0.06139315230224321\n1190\tEd Harcourt\t0.02016285381930981\n1000289\tMeat Loaf\t0.009308986752595776\n1002772\tVNV Nation\t0.01344364012409514\n1001550\tThe Bangles\t0.009272467902995721\n1001607\tJefferson Airplane\t0.006926868256294126\n621\tLamb\t0.007206208425720621\n2070227\tThe Peter Malick Group\t0.12440191387559808\n5687\tThe Jimi Hendrix Experience\t0.01038961038961039\n1008337\tFrou Frou\t0.0037013310555911454\n1000041\tNo Use for a Name\t0.01206776514272453\n1250100\t鷺巣詩郎\t0.025110782865583457\n1004241\tThe Allman Brothers Band\t0.01134089392928619\n1199\tEverything But the Girl\t0.009591875117547489\n2037\tHandsome Boy Modeling School\t0.008849557522123894\n1002850\tGlassjaw\t0.010399673735725938\n1616\tKing Crimson\t0.01060070671378092\n1002280\tMudvayne\t0.007381676074685193\n1001907\tWilco\t0.003639477627916934\n1238317\tTalib Kweli & Hi-Tek\t0.04009433962264151\n1002448\tDexy's Midnight Runners\t0.013625434143734972\n1006160\tTed Leo and the Pharmacists\t0.0067335621864272515\n1038159\tBjörn Rosenström\t0.04225352112676056\n4100\tRob Dougan\t0.008403361344537815\n1019469\tAndrew Lloyd Webber\t0.011216186496591158\n1012673\tDe-Phazz\t0.022261021388040158\n1001007\tThird Eye Blind\t0.004928964917367353\n1041390\tROUND TABLE featuring Nino\t0.13746630727762804\n1013068\tGeorge Gershwin\t0.031097560975609756\n1236660\tThe Eighties Matchbox B-Line Disaster\t0.04068348250610252\n4153\tBlack Rebel Motorcycle Club\t0.009087604507451835\n6785079\tASA-CHANG & 巡礼\t0.08445945945945946\n1000416\tRamones\t0.0030062530062530063\n1282715\tPidżama Porno\t0.0992063492063492\n1007969\tKristin Hersh\t0.035486160397444996\n1004174\tPorcupine Tree\t0.009382623381497467\n1011745\tGamma Ray\t0.023430178069353328\n1014175\tSeñor Coconut\t0.04038772213247173\n1008512\tTrick Daddy\t0.012980269989615784\n1001424\tKelis\t0.0048407396650208155\n1001134\tThe Stone Roses\t0.006650704974727321\n1305\tThe Stranglers\t0.00876731544800982\n1018807\tTheme Songs\t0.003423953982058481\n1268554\tElvis Presley vs. Junkie XL\t0.03274394237066143\n6621492\t桜庭統\t0.06009615384615385\n83\tViolent Femmes\t0.005621135469364812\n1000266\tAsh\t0.00539291217257319\n1039381\tMartha And The Vandellas\t0.048323471400394474\n1004296\tThrice\t0.0052887209929843495\n1001855\tChuck Berry\t0.008064516129032258\n1283231\tThe Les Claypool Frog Brigade\t0.05997552019583843\n1327810\t奥井雅美\t0.07153284671532846\n1014589\tKOTOKO\t0.04257167680278019\n1021625\tLove Spirals Downwards\t0.11136363636363636\n1002530\tInsane Clown Posse\t0.018860662047729022\n1000243\tPuff Daddy\t0.013968072976054732\n1018259\tUlver\t0.021012006861063463\n1015461\tAvantasia\t0.027374301675977653\n1003729\tMichelle Branch\t0.007291666666666667\n1056259\tZen Café\t0.036055923473142015\n1233212\tThe Beatnuts\t0.021444201312910284\n911\tLL Cool J\t0.009967453213995118\n1238242\tThe Alan Parsons Project\t0.018054532056005896\n1000313\tSuper Furry Animals\t0.008165305782369604\n910\tFabolous\t0.00999184339314845\n1248537\tRobbie Williams & Nicole Kidman\t0.06648575305291723\n1004841\tRollergirl\t0.03566229985443959\n1327092\t玉置成実\t0.046755725190839696\n1006924\tCassius\t0.021967963386727688\n2090\tTheatre of Tragedy\t0.016603251470079558\n1030060\tWWE\t0.03592814371257485\n4604\tSophie Ellis-Bextor\t0.01681260945709282\n4475\tThe Beta Band\t0.006835659356308744\n1233781\tThe Crown\t0.03858520900321544\n1000766\tINXS\t0.007315957933241884\n1017919\tKalmah\t0.03940886699507389\n1005288\tKate Ryan\t0.01708185053380783\n4483\tDusty Springfield\t0.007864984433884975\n598\tMoloko\t0.007184553210597216\n2054324\t雅-Miyavi-\t0.05466970387243736\n1004274\tThe All-American Rejects\t0.006775832862789385\n1050475\tWreckx-N-Effect\t0.11594202898550725\n1110\tKRS-One\t0.016376663254861822\n6958424\tНиколай Римский-Корсаков\t0.07350689127105667\n1028717\tN.W.A\t0.008288723881885684\n2003\tThe Cinematic Orchestra\t0.013382687927107062\n1000055\tCream\t0.006764536557282671\n1007725\tJerry Goldsmith\t0.04245709123757904\n1028581\tMarco Borsato\t0.04942166140904311\n1011213\tAlan Menken\t0.022804463852498787\n1002622\tBonnie Tyler\t0.010991580916744622\n1240769\tSam the Sham & the Pharaohs\t0.051535087719298246\n1004484\tThe Used\t0.003775706940874036\n1009302\tBlümchen\t0.03587786259541985\n1003579\tLeAnn Rimes\t0.011749680715197957\n1017831\t4 Strings\t0.01454775458570525\n1006427\tCat Power\t0.005439924314096499\n4656\tAesop Rock\t0.008372770294867127\n512\tMazzy Star\t0.008933773548261798\n1009786\tMichael Andrews\t0.008005569091541943\n2712\tMr. Bungle\t0.009362914716059434\n5824\tTom Jones\t0.008832565284178187\n1000724\tFugees\t0.006253398586188146\n1235731\tThe Blues Brothers\t0.011929460580912862\n1001383\tThe Moody Blues\t0.012585499316005472\n1031182\tLil' Kim\t0.016843647015745148\n1013656\tMalice Mizer\t0.024891774891774892\n1015448\tApulanta\t0.026806526806526808\n532\tHerbie Hancock\t0.009292929292929294\n1233977\tThe Crüxshadows\t0.030789825970548863\n2553\tDarkthrone\t0.021014161717679305\n323\tThis Mortal Coil\t0.02749551703526599\n1041765\tFranz Schubert\t0.02640642939150402\n1062984\tHeartsdales\t0.09766454352441614\n1001027\tSugarcult\t0.005509641873278237\n2799\tPeter Gabriel\t0.005053834322127005\n1116214\tChingy\t0.00831331978570109\n3940\tDntel\t0.010085163603765128\n1003966\tNile\t0.017241379310344827\n1391\tKruder & Dorfmeister\t0.01150600869342879\n1013780\tMushroomhead\t0.01718213058419244\n5741\tShakira\t0.007575757575757576\n1000320\tMxPx\t0.007352941176470588\n1000738\tLisa Loeb\t0.012067578439259855\n1013151\tRise Against\t0.006556899315168294\n1006715\tFrom Autumn to Ashes\t0.007258064516129033\n1004535\tNada Surf\t0.006061422413793103\n1012257\tDo As Infinity\t0.022134776192818496\n1245812\tThe J. Geils Band\t0.02\n1300816\t相川七瀬\t0.04772004241781548\n535\tJoy Division\t0.0030138637733574444\n1006029\tConverge\t0.009771986970684038\n1030121\tBachman-Turner Overdrive\t0.017421602787456445\n1233078\tthe brilliant green\t0.03642384105960265\n5433\tBee Gees\t0.006660611565243718\n1303257\t東京スカパラダイスオーケストラ\t0.030240549828178694\n1000042\tMonty Python\t0.007653504957383893\n3111\tSimple Plan\t0.005083766608896592\n1257729\tBéla Bartók\t0.11578947368421053\n2128\tTowa Tei\t0.040968342644320296\n1021145\tPUFFY\t0.026474127557160047\n1688\tSt. Germain\t0.009282700421940928\n1003673\tPrince\t0.0038164628328562753\n1023764\tJohannes Brahms\t0.02691131498470948\n1005234\tSaint Etienne\t0.010845452304658615\n1280437\t倉木麻衣\t0.04526748971193416\n1011302\tErick Sermon\t0.048298572996706916\n2784\tThe Notwist\t0.007564036444902871\n238\tSuede\t0.008189093616229295\n1238186\tDave Matthews & Tim Reynolds\t0.023504273504273504\n1002061\tJack Johnson\t0.00337035618536959\n1240744\tThe Righteous Brothers\t0.015602836879432624\n1001876\tKyuss\t0.01282798833819242\n1233311\tGeorge Thorogood & the Destroyers\t0.048834628190899\n1001888\tJools Holland\t0.14814814814814814\n1001835\tGolden Earring\t0.015663937344250624\n1026191\tGZA/Genius\t0.018876018876018877\n1009306\tMoxy Früvous\t0.03767123287671233\n4302\tJanis Joplin\t0.007575757575757576\n1234490\tRobbie Williams & Kylie Minogue\t0.102803738317757\n5919\tAphrodite\t0.018803418803418803\n1000892\tMad Caddies\t0.012578616352201259\n1004088\tBuffalo Springfield\t0.01321718233703815\n1003727\tYeah Yeah Yeahs\t0.002971968929415738\n251\tBilly Idol\t0.004767184035476719\n1244869\tThe Go-Go's\t0.021224086870681145\n1240103\tThe Jackson 5\t0.007742167806985956\n1015585\tM.O.P.\t0.017946577629382305\n6630354\tParty Ben\t0.028233749179251477\n1003604\tDJ Sakin & Friends\t0.05341614906832298\n2072\tBanco de Gaia\t0.02621951219512195\n4295\tJack Off Jill\t0.01615933859451334\n92\tPrefuse 73\t0.007546507546507547\n615\tThe Orb\t0.010304337407141146\n1252315\tPyotr Ilyich Tchaikovsky\t0.012140033879164314\n1006034\tPoison the Well\t0.010356454720616571\n1028597\tGyllene Tider\t0.029132791327913278\n1235674\tSly & the Family Stone\t0.012014529198100027\n1011750\tRichard Wagner\t0.015920029618659754\n1299844\t後藤真希\t0.07312925170068027\n1260698\t孫燕姿\t0.10093896713615023\n6669584\t少女革命ウテナ\t0.1235632183908046\n1296257\t松浦亜弥\t0.048044692737430165\n1023028\tLo Fidelity Allstars\t0.024376417233560092\n1006094\tFiona Apple\t0.004241995758004242\n1198\tEverclear\t0.004628099173553719\n4083\tWhitesnake\t0.009688581314878892\n1256384\tNancy Sinatra & Lee Hazlewood\t0.037803780378037805\n1013088\tJean-Michel Jarre\t0.012734990903577926\n1018404\tYngwie Malmsteen\t0.01243707432632514\n1238056\tDJ Sammy & Yanou\t0.025377643504531724\n1238759\tThe Brand New Heavies\t0.02775941837409121\n1002225\tSunny Day Real Estate\t0.00857843137254902\n1105360\tScissor Sisters\t0.0032017075773745998\n227\tCibo Matto\t0.012477718360071301\n1004946\tLords of Acid\t0.01654194564789287\n1040652\tFrankie Valli and the Four Seasons\t0.07879924953095685\n1233239\tThe Mountain Goats\t0.009639660316731696\n2819\ta-ha\t0.004965712934499882\n1003133\tCosmic Gate\t0.01699029126213592\n1005081\tCam'ron\t0.012578616352201259\n691\tBillie Holiday\t0.007313250914156365\n1278093\tDesert Sessions\t0.027833001988071572\n1280624\t矢井田瞳\t0.05115712545676005\n1001479\tNeil Young & Crazy Horse\t0.017714044706874738\n2115\tLe Tigre\t0.003990498812351544\n1001313\tSash!\t0.013939595087952207\n1233285\tThe Rasmus\t0.0055460187508253\n1008445\tBroken Social Scene\t0.004142828960347208\n1134319\tBrain\t0.56\n1003926\tCollective Soul\t0.006920999324780554\n2247\tFour Tet\t0.006622516556291391\n974\tMONDO GROSSO\t0.04659090909090909\n756\tSkinny Puppy\t0.009704142011834319\n1002560\tCyndi Lauper\t0.006183079475192279\n1245185\tJoss Stone\t0.006737880032867708\n4568\tNusrat Fateh Ali Khan\t0.03477523324851569\n1022420\tChimaira\t0.013739946380697051\n1044562\tDemon Hunter\t0.030415430267062313\n1308328\tポルノグラフィティ\t0.02437574316290131\n1008313\tGipsy Kings\t0.011647727272727273\n1002382\tSteve Miller Band\t0.0066418273124898754\n1028270\tStory of the Year\t0.005694444444444445\n434\tSuzanne Vega\t0.008382743815170722\n1026835\tSnap!\t0.01272896615957777\n1020\tThe Dave Brubeck Quartet\t0.017394993635977938\n45\tDJ Krush\t0.011347910323830611\n1006885\tGolden Boy with Miss Kittin\t0.03151421983089931\n341\tBrian Eno\t0.005434782608695652\n1383\tMethod Man & Redman\t0.016817063166529943\n5739\tSex Pistols\t0.004585616821384633\n2566\tAdd N To (X)\t0.022601984564498346\n6839911\t近藤浩治\t0.017857142857142856\n1005898\tCrosby, Stills & Nash\t0.02371312897628687\n2484\tFront 242\t0.014673514306676448\n1096374\tMatt Darey's Mash Up\t0.2564102564102564\n3328\tThe Wallflowers\t0.006222775357809583\n1001989\tProcol Harum\t0.01569242840329541\n1002959\tWay Out West\t0.0221483942414175\n2232\tHooverphonic\t0.008892841262783458\n1004075\tSolid Base\t0.05730659025787966\n1314259\tI Can Make a Mess Like Nobody's Business\t0.02379535990481856\n1000518\tJoe Satriani\t0.00819000819000819\n1001594\tAdema\t0.007762468464971861\n5798\tThe Doobie Brothers\t0.011318619128466326\n1018211\tTwiztid\t0.06430868167202572\n1003778\tSixpence None the Richer\t0.006755615605472049\n4225\tElectric Six\t0.004889377826671556\n1001478\tApollo 440\t0.008398068444257821\n1028335\tChristina Milian\t0.011757789535567314\n1239277\tJohnny Cash & Willie Nelson\t0.06033182503770739\n1000384\tWeen\t0.007054673721340388\n1026084\tEvery Time I Die\t0.01228878648233487\n2115937\tLee \"Scratch\" Perry & The Upsetters\t0.06968641114982578\n1001584\tSteve Harley & Cockney Rebel\t0.04085801838610827\n1002068\tGroove Coverage\t0.008829522300203759\n1234850\tThe Hollies\t0.014064190407500902\n5452\tBruce Dickinson\t0.017727272727272727\n1004054\tAll Saints\t0.010033444816053512\n360\tJohn Coltrane\t0.006504336224149433\n1020040\tImmortal\t0.01478953356086462\n5496\tEcho & the Bunnymen\t0.005346127484578478\n2666\tThe SugarCubes\t0.016290726817042606\n1002840\tThe Blood Brothers\t0.00523209015293802\n1010020\tAvain\t0.06878306878306878\n1004950\t40 Below Summer\t0.038461538461538464\n1010353\tAlan Silvestri\t0.02378048780487805\n1000193\tSaliva\t0.007954313685498674\n107\tStereolab\t0.005365249690466364\n2163796\tCounting Crows & Bløf\t0.08297872340425531\n1000498\tPuddle of Mudd\t0.0044227716035382175\n1004473\tObituary\t0.03831041257367387\n4052\tKosheen\t0.009167842031029619\n1240675\tAlison Krauss & Union Station\t0.022058823529411766\n1029364\tScreamin' Jay Hawkins\t0.03816046966731898\n703\tJanet Jackson\t0.008032955715756952\n1012263\tTechnotronic\t0.026952315134761574\n1003578\tIan van Dahl\t0.010241596638655462\n1023347\tMagnus Uggla\t0.03753609239653513\n1003780\tJohn Mellencamp\t0.010577705451586655\n1012595\tEvergrey\t0.017711171662125342\n1005712\tTiamat\t0.015905383360522024\n1009055\tAlphaville\t0.008595988538681949\n1029978\tOriga\t0.03046875\n1195930\tSkandaali\t0.08478260869565217\n1007749\tShadows Fall\t0.011761064685855771\n6617623\t岩垂徳行\t0.0627062706270627\n1000631\tMadness\t0.005982367758186398\n1014741\tBorknagar\t0.020052770448548814\n1233681\tThe Future Sound of London\t0.007661290322580645\n1012630\tGackt\t0.014942980731419583\n1024208\t...And Oceans\t0.04470588235294118\n1000152\tCold\t0.007682976142337242\n2146166\tCiara\t0.006466984343090538\n5626\tDiana Krall\t0.011469966797464533\n1003209\tDiana Ross and the Supremes\t0.015025701858442072\n1043800\tAjattara\t0.03721841332027424\n1236346\tThe Venus In Furs\t0.0594679186228482\n1002626\tN-Trance\t0.019916142557651992\n1000653\tGrateful Dead\t0.006327006327006327\n1299471\t陶喆\t0.12025316455696203\n1307650\tBerryz工房\t0.10052910052910052\n1004469\tAgoraphobic Nosebleed\t0.043329532497149374\n1007569\tIsaac Hayes\t0.006382264024185421\n1016575\tBOYSETSFIRE\t0.01093210586881473\n5717\tRefused\t0.00625\n1006906\tTom Petty\t0.005653079440642666\n1014644\tEternal Tears of Sorrow\t0.032067510548523206\n1005666\tSatyricon\t0.015175718849840255\n1052332\tYUP\t0.0347985347985348\n1259991\tJane Birkin & Serge Gainsbourg\t0.04865556978233035\n1233083\tthe pillows\t0.009093143278446793\n1001307\tEiffel 65\t0.00913354727227845\n1234424\tTimbaland & Magoo\t0.026850507982583455\n6834637\t신화\t0.1\n1537\tPitchshifter\t0.019701810436634718\n1012077\tJoe Strummer and the Mescaleros\t0.02195845697329377\n1065358\tMe'Shell Ndegéocello\t0.052556818181818184\n3865\tT. Raumschmiere\t0.024374176548089592\n1796\tA Guy Called Gerald\t0.024358130348913758\n1087001\tO.S.T.R.\t0.09973045822102426\n1003731\tSteppenwolf\t0.006684733514001806\n2008146\t田中公平\t0.04946524064171123\n1247869\tSifl & Olly\t0.07007575757575757\n1253\tMuddy Waters\t0.013464337700145561\n1046450\tCMX\t0.0226576852418861\n5840\tUriah Heep\t0.015845824411134905\n"
+          },
+          {
+            "type": "HTML",
+            "data": "<div class=\"result-alert alert-warning\" role=\"alert\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button><strong>Output is truncated</strong> to 1000 rows. Learn more about <strong>zeppelin.spark.maxResult</strong></div>\n"
+          }
+        ]
+      }
+    },
+    {
+      "text": "// End",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T21:40:11+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654799795625_1389734349",
+      "id": "paragraph_1654799795625_1389734349",
+      "dateCreated": "2022-06-09T18:36:35+0000",
+      "dateStarted": "2022-06-09T21:40:11+0000",
+      "dateFinished": "2022-06-09T21:40:11+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7785"
+    }
+  ],
+  "name": "RatioPiratage",
+  "id": "2H4V15DK2",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.10.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {
+    "isRunning": false
+  },
+  "path": "/RatioPiratage"
+}
