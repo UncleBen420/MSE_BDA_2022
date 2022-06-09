@@ -46,13 +46,31 @@ Dans le projet de base, l'algorithme utilisé (ALS) est un algorithme de collabo
 
 Alors qu'une autre question pourrait être posée : "**Quels sont les artistes qui apparaissent fréquemment ensemble ?**" Cette question peut être répondue avec une analyse du panier d'achat ou règle d'association. Notre intention est donc d'utiliser cet algorithme pour voir si effectivement, il permet de répondre à cette question.
 
+### Algorithms you applied
+### Optimisations you performed
+### Your approach to testing and evaluation
+### Results you obtained
+### Possible future enhancements
+
 ## Clustering visualisation
 ​
 Une autre question qu'il serait interressante de poser et "**Est-ce que des clusters apparaissent entre les artistes?**" ou "**Est-ce qu'on peut distinguer les genres musicaux avec simplement les données de base ?**". Pour prouver la veracité des résultats un 2ème dataset devra être utilisé pour vérifer les clusters.
+
+### Algorithms you applied
+### Optimisations you performed
+### Your approach to testing and evaluation
+### Results you obtained
+### Possible future enhancements
 
 ## Ratio torrent achat
 
 Les données fournies par le dataset sont très limitées. Il serait intéressant d'extraire des features supplémentaires à partir d'un de données disponibles.
 Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes était correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
+
+### Algorithms you applied
+### Optimisations you performed
+### Your approach to testing and evaluation
+### Results you obtained
+### Possible future enhancements
 
 # Conclusion
