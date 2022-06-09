@@ -1,0 +1,1363 @@
+﻿{
+  "paragraphs": [
+    {
+      "text": "\r\nimport scala.collection.Map\r\nimport scala.collection.mutable.ArrayBuffer\r\nimport scala.util.Random\r\nimport org.apache.spark.broadcast.Broadcast\r\nimport org.apache.spark.ml.recommendation.{ALS, ALSModel}\r\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\r\nimport org.apache.spark.sql.functions._\r\n\r\nimport org.apache.spark.ml.feature.PCA\r\n\r\n\r\n\r\n\r\nimport java.nio.file.Paths\r\nimport spark.implicits._\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:19:57+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "import scala.collection.Map\nimport scala.collection.mutable.ArrayBuffer\nimport scala.util.Random\nimport org.apache.spark.broadcast.Broadcast\nimport org.apache.spark.ml.recommendation.{ALS, ALSModel}\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\nimport org.apache.spark.sql.functions._\nimport org.apache.spark.ml.feature.PCA\nimport java.nio.file.Paths\nimport spark.implicits._\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657440_789204462",
+      "id": "paragraph_1654087886859_1243086342",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:19:57+0000",
+      "dateFinished": "2022-06-09T10:19:58+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:166"
+    },
+    {
+      "text": "val OS = System.getProperty(\"os.name\").toLowerCase\r\nif (OS.contains(\"win\"))\r\n  System.setProperty(\"hadoop.home.dir\", Paths.get(\"winutils\").toAbsolutePath.toString)\r\nelse\r\n  System.setProperty(\"hadoop.home.dir\", \"/\")\r\n\r\nval spark = SparkSession.builder().config(\"spark.master\", \"local[*]\").getOrCreate()\r\n// Optional, but may help avoid errors due to long lineage\r\n//spark.sparkContext.setCheckpointDir(\"./tmp\")\r\n\r\nval base = \"./audioscrobbler_data/\"\r\n//val base = \"gs://dataproc-staging-europe-west6-872288405326-yxz32br1/audioscrobbler_data/\"\r\n\r\nval rawUserArtistData = spark.read.textFile(base + \"user_artist_data.txt\")\r\nval rawArtistData = spark.read.textFile(base + \"artist_data.txt\")\r\nval rawArtistAlias = spark.read.textFile(base + \"artist_alias.txt\")\r\nval rawArtistStyle = spark.read.textFile(base + \"artist_style.txt\")\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:19:58+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "completionKey": "TAB",
+          "editOnDblClick": false,
+          "completionSupport": true,
+          "language": "scala"
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mOS\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = linux\n\u001b[1m\u001b[34mspark\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.SparkSession\u001b[0m = org.apache.spark.sql.SparkSession@4e05b360\n\u001b[1m\u001b[34mbase\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = ./audioscrobbler_data/\n\u001b[1m\u001b[34mrawUserArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistStyle\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657441_42179769",
+      "id": "paragraph_1654255430437_1966787196",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:19:58+0000",
+      "dateFinished": "2022-06-09T10:19:58+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:167"
+    },
+    {
+      "text": "// show the 5 first line in the file userartistdata\r\nrawUserArtistData.take(5).foreach(println)\r\nrawArtistStyle.take(5).foreach(println)\r\n\r\n// It makes sense to transform this to a data frame with columns named “user” and “artist,” because it then becomes simple to compute simple statistics like the maximum and minimum of both columns \r\nval userArtistDF = rawUserArtistData.map { line =>\r\n  val Array(user, artist, _*) = line.split(' ')\r\n  (user.toInt, artist.toInt)\r\n}.toDF(\"user\", \"artist\")\r\n\r\n\r\n/*val artistStyleDF = rawArtistStyle.flatMap { line =>\r\n      val Array(style, name, _*) = line.split('\\t')\r\n      if (name.isEmpty) {\r\n        None\r\n      } else {\r\n        try {\r\n          Some((style.trim, name.trim))\r\n        } catch {\r\n          case _: NumberFormatException => None\r\n        }\r\n      }\r\n    \r\n    \r\n}.toDF(\"style\", \"name\")*/\r\n\r\nval artistStyleDF = rawArtistStyle.flatMap { line =>\r\n      val Array(style, name, _*) = line.split('\\t')\r\n      Map((style.trim, name.trim))\r\n}.toDF(\"style\", \"name\")\r\n\r\n//val artistStyleDF = rawArtistStyle.map(_.split(\"\\t\")).map(arr => arr(0) -> arr(1)).toMap\r\nprintln(\"tgrfedrttgfedwe\")\r\nprintln(artistStyleDF)\r\n\r\n// ALS does not specify the type to use. but it works better with Int 32 so we have to be sure the max number existing in the dataset is bellow the maximum int value (2147483647). Here it's below so we have no problems\r\nuserArtistDF.agg(min(\"user\"), max(\"user\"), min(\"artist\"), max(\"artist\")).show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:19:58+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "completionKey": "TAB",
+          "editOnDblClick": false,
+          "completionSupport": true,
+          "language": "scala"
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "1000002 1 55\n1000002 1000006 33\n1000002 1000007 8\n1000002 1000009 144\n1000002 1000010 314\ngarage rock\tThe Bristols\ncountry rock\tThe Feds\nfree jazz\tStephen Varcoe/Choir of King's College_ Cambridge/Sir David Willcocks\noi\tCarroll Thompson\nspace rock\tGorodisch\ntgrfedrttgfedwe\n[style: string, name: string]\n+---------+---------+-----------+-----------+\n|min(user)|max(user)|min(artist)|max(artist)|\n+---------+---------+-----------+-----------+\n|       90|  2443548|          1|   10794401|\n+---------+---------+-----------+-----------+\n\n\u001b[1m\u001b[34muserArtistDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [user: int, artist: int]\n\u001b[1m\u001b[34martistStyleDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, name: string]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=351",
+              "$$hashKey": "object:1006"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=352",
+              "$$hashKey": "object:1007"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=353",
+              "$$hashKey": "object:1008"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657443_1935831085",
+      "id": "paragraph_1654255396907_337286585",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:19:58+0000",
+      "dateFinished": "2022-06-09T10:20:12+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:168"
+    },
+    {
+      "text": "import org.apache.spark.ml.feature.StringIndexer\nval indexer = new StringIndexer().setInputCol(\"style\").setOutputCol(\"numStyle\")\n\nprintln(\"count \"+artistStyleDF.count())\nval artistStyleDF_cleaned = artistStyleDF.dropDuplicates(\"name\")\nprintln(\"Distinct count\"+artistStyleDF_cleaned.count())\nartistStyleDF_cleaned.show()\nprintln(\"count \"+artistStyleDF_cleaned.count())\n\nval artistStyleIDDF = indexer.fit(artistStyleDF_cleaned).transform(artistStyleDF_cleaned).withColumn(\"name\", regexp_replace(($\"name\"), \"[^a-zA-Z0-9 ]\", \"\")).filter(\"name != ''\").na.drop()\nprintln(\"count \"+artistStyleIDDF.count())\n\nval indexer2 = new StringIndexer().setInputCol(\"name\").setOutputCol(\"numName\")\nval fitted = indexer2.fit(artistStyleIDDF)\n\nval style = fitted.transform(artistStyleDF_cleaned)\n\n//println(\"count \"+artistStyleIDDF.count())\n//val ewDF = artistStyleIDDF.filter(\"name != ''\").filter(\"style != ''\")\n//println(\"count \"+ewDF.count())\n\n\nartistStyleIDDF.show(20)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:12+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "count 44745\nDistinct count43848\n+----------------+-------------------+\n|           style|               name|\n+----------------+-------------------+\n|          modern|          1001 Ways|\n|             00s|           21 Hertz|\n|           songs|              4 Lyn|\n|          ballad|             5 Bugs|\n|          singer|                A.J|\n|            rock|            AUDIO.3|\n|       freestyle|  Abbott & Chambers|\n|          mellow|          Al Duvall|\n|       hard rock|      Alain Damiens|\n|       political|Alix Perez & Icicle|\n|          trance|             Amulet|\n|       soft rock|            Anugama|\n|          am pop|  Armando Trovajoli|\n|            rock|           Art Zoyd|\n|          ladies|     Austin Collins|\n|    southern rap|Bacon Caravan Creek|\n|alternative rock|            Banquet|\n|       dixieland|          Batmobile|\n|        abstract|          Bellgrave|\n|           synth| Beyond The Embrace|\n+----------------+-------------------+\nonly showing top 20 rows\n\ncount 43848\ncount 43847\n+----------------+-------------------+--------+\n|           style|               name|numStyle|\n+----------------+-------------------+--------+\n|          modern|          1001 Ways|   340.0|\n|             00s|           21 Hertz|    59.0|\n|           songs|              4 Lyn|   538.0|\n|          ballad|             5 Bugs|    60.0|\n|          singer|                 AJ|   123.0|\n|            rock|             AUDIO3|     0.0|\n|       freestyle|   Abbott  Chambers|   200.0|\n|          mellow|          Al Duvall|   111.0|\n|       hard rock|      Alain Damiens|    46.0|\n|       political| Alix Perez  Icicle|   168.0|\n|          trance|             Amulet|    26.0|\n|       soft rock|            Anugama|    70.0|\n|          am pop|  Armando Trovajoli|   775.0|\n|            rock|           Art Zoyd|     0.0|\n|          ladies|     Austin Collins|  1457.0|\n|    southern rap|Bacon Caravan Creek|   472.0|\n|alternative rock|            Banquet|     3.0|\n|       dixieland|          Batmobile|   560.0|\n|        abstract|          Bellgrave|    79.0|\n|           synth| Beyond The Embrace|   294.0|\n+----------------+-------------------+--------+\nonly showing top 20 rows\n\nimport org.apache.spark.ml.feature.StringIndexer\n\u001b[1m\u001b[34mindexer\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.ml.feature.StringIndexer\u001b[0m = strIdx_36f403ea3a5f\n\u001b[1m\u001b[34martistStyleDF_cleaned\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [style: string, name: string]\n\u001b[1m\u001b[34martistStyleIDDF\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, name: string ... 1 more field]\n\u001b[1m\u001b[34mindexer2\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.ml.feature.StringIndexer\u001b[0m = strIdx_ca59955bfd96\n\u001b[1m\u001b[34mfitted\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.ml.feature.StringIndexerModel\u001b[0m = StringIndexerModel: uid=strIdx_ca59955bfd96, handleInvalid=error\n\u001b[1m\u001b[34mstyle\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, name: string ... 1 more field]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=354",
+              "$$hashKey": "object:1062"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=355",
+              "$$hashKey": "object:1063"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=356",
+              "$$hashKey": "object:1064"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=357",
+              "$$hashKey": "object:1065"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=358",
+              "$$hashKey": "object:1066"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=359",
+              "$$hashKey": "object:1067"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=360",
+              "$$hashKey": "object:1068"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=361",
+              "$$hashKey": "object:1069"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654605825069_1573162324",
+      "id": "paragraph_1654605825069_1573162324",
+      "dateCreated": "2022-06-07T12:43:45+0000",
+      "dateStarted": "2022-06-09T10:20:12+0000",
+      "dateFinished": "2022-06-09T10:20:21+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:169"
+    },
+    {
+      "text": "/*\r\nTo be able to interpret the futur results, it's useful to have a corespondance between ID and band Name. This information is given to us by the file artist_data which contain the ID Name map\r\nUse of flatmap insted of map because some line in the file are corrupted. \r\n*/\r\nval artistByID = rawArtistData.flatMap { line =>\r\n      val (id, name) = line.span(_ != '\\t')\r\n      if (name.isEmpty) {\r\n        None\r\n      } else {\r\n        try {\r\n          Some((id.toInt, name.trim))\r\n        } catch {\r\n          case _: NumberFormatException => None\r\n        }\r\n      }\r\n    }.toDF(\"id\", \"name\").cache\r\n    \r\nval temp = artistByID.toDF(\"id\", \"name\").withColumn(\"name\", regexp_replace(($\"name\"), \"[^a-zA-Z0-9 ]\", \"\")).filter(\"name != ''\").na.drop()\r\n \r\n// we can see that it map indeed the ID to the name of the artist   \r\nartistByID.head\r\n\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:21+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34martistByID\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [id: int, name: string]\n\u001b[1m\u001b[34mtemp\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [id: int, name: string]\n\u001b[1m\u001b[34mres85\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Row\u001b[0m = [1134999,06Crazy Life]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=362",
+              "$$hashKey": "object:1143"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657444_1505213823",
+      "id": "paragraph_1654088395034_184471560",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:20:21+0000",
+      "dateFinished": "2022-06-09T10:20:24+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:170"
+    },
+    {
+      "text": "artistByID.count()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:24+0000",
+      "progress": 40,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mres86\u001b[0m: \u001b[1m\u001b[32mLong\u001b[0m = 1848281\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=363",
+              "$$hashKey": "object:1189"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654633822892_1748049556",
+      "id": "paragraph_1654633822892_1748049556",
+      "dateCreated": "2022-06-07T20:30:22+0000",
+      "dateStarted": "2022-06-09T10:20:24+0000",
+      "dateFinished": "2022-06-09T10:20:27+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:171"
+    },
+    {
+      "text": "/*\r\nThe artist_alias.txt file maps artist IDs that may be misspelled or nonstandard to the\r\nID of the artist’s canonical name.\r\n\r\n*/\r\nval artistAlias = rawArtistData.flatMap { line =>\r\n    val Array(artist, alias) = line.split('\\t')\r\n    if (artist.isEmpty) {\r\n        None\r\n    } else {\r\n        Some((artist.toInt, alias.trim))\r\n    }\r\n    }",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:27+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34martistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[(Int, String)]\u001b[0m = [_1: int, _2: string]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657444_617096466",
+      "id": "paragraph_1654088365705_274280784",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:20:27+0000",
+      "dateFinished": "2022-06-09T10:20:28+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:172"
+    },
+    {
+      "text": "/*\nThis function transform all mispelled artist name ID to the right ID and the proceed to count the number of time a artist has been lisened to by a user\n*/\ndef buildCounts(rawUserArtistData: Dataset[String], bArtistAlias: Broadcast[Map[Int,Int]]): DataFrame = {\n    rawUserArtistData.map { line =>\n        val Array(userID, artistID, count) = line.split(' ').map(_.toInt)\n        val finalArtistID = bArtistAlias.value.getOrElse(artistID, artistID)\n        \n    (userID, finalArtistID, count)\n    }.toDF(\"user\", \"artist\", \"count\")\n}\n\ndef buildArtistAlias(rawArtistAlias: Dataset[String]): Map[Int,Int] = {\n    rawArtistAlias.flatMap { line =>\n    val Array(artist, alias) = line.split('\\t')\n    if (artist.isEmpty) {\n        None\n    } else {\n        Some((artist.toInt, alias.toInt))\n    }\n    }.collect().toMap\n}\n\n/*\nThis is an optimisation. It ensure that Spark send and hold in memory just one copy for each executor in the cluster.\n*/\nval bArtistAlias = spark.sparkContext.broadcast(buildArtistAlias(rawArtistAlias))\nval trainData = buildCounts(rawUserArtistData, bArtistAlias)\n\ntrainData.cache()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:28+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mbuildCounts\u001b[0m: \u001b[1m\u001b[32m(rawUserArtistData: org.apache.spark.sql.Dataset[String], bArtistAlias: org.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]])org.apache.spark.sql.DataFrame\u001b[0m\n\u001b[1m\u001b[34mbuildArtistAlias\u001b[0m: \u001b[1m\u001b[32m(rawArtistAlias: org.apache.spark.sql.Dataset[String])scala.collection.Map[Int,Int]\u001b[0m\n\u001b[1m\u001b[34mbArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]]\u001b[0m = Broadcast(690)\n\u001b[1m\u001b[34mtrainData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [user: int, artist: int ... 1 more field]\n\u001b[1m\u001b[34mres87\u001b[0m: \u001b[1m\u001b[32mtrainData.type\u001b[0m = [user: int, artist: int ... 1 more field]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=364",
+              "$$hashKey": "object:1275"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654520657445_999263146",
+      "id": "paragraph_1654088776379_248868071",
+      "dateCreated": "2022-06-06T13:04:17+0000",
+      "dateStarted": "2022-06-09T10:20:28+0000",
+      "dateFinished": "2022-06-09T10:20:30+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:173"
+    },
+    {
+      "text": "val id_style = artistStyleIDDF.join(artistByID,artistStyleIDDF.col(\"name\") === artistByID.col(\"name\"), \"inner\").select(\"style\",\"id\")",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:30+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mid_style\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, id: int]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654605773902_1758128015",
+      "id": "paragraph_1654605773902_1758128015",
+      "dateCreated": "2022-06-07T12:42:53+0000",
+      "dateStarted": "2022-06-09T10:20:30+0000",
+      "dateFinished": "2022-06-09T10:20:30+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:174"
+    },
+    {
+      "text": "id_style.show()\nprintln(\"count \"+id_style.count)\nid_style.cache()\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:30+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-----------------+--------+\n|            style|      id|\n+-----------------+--------+\n|             soul|10584602|\n|      alternative| 7031181|\n|            indie| 9950855|\n|     roots reggae| 1034103|\n|      hard trance| 9917990|\n|            house| 1240168|\n|        dancehall| 1015630|\n|alternative metal| 1185359|\n|             acid| 1240262|\n|          british| 9934435|\n|       doom metal| 1018275|\n|      alternative| 1240448|\n|  progressive pop| 1240452|\n|    united states| 1240485|\n|        classical| 1240508|\n|       industrial| 1240510|\n|      melancholia| 1002584|\n|           master| 1135372|\n|             punk| 1240603|\n|       electronic| 9918021|\n+-----------------+--------+\nonly showing top 20 rows\n\ncount 26324\n\u001b[1m\u001b[34mres88\u001b[0m: \u001b[1m\u001b[32mid_style.type\u001b[0m = [style: string, id: int]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=366",
+              "$$hashKey": "object:1361"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=368",
+              "$$hashKey": "object:1362"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654606513838_1546416606",
+      "id": "paragraph_1654606513838_1546416606",
+      "dateCreated": "2022-06-07T12:55:13+0000",
+      "dateStarted": "2022-06-09T10:20:30+0000",
+      "dateFinished": "2022-06-09T10:20:34+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:175"
+    },
+    {
+      "text": "val allData = buildCounts(rawUserArtistData, bArtistAlias).cache()\n\nval dataset_clustering = allData.join(id_style, id_style.col(\"id\") === allData.col(\"artist\"),\"inner\").select(\"id\", \"user\", \"count\", \"style\")\nval counting = dataset_clustering.groupBy(\"style\").agg(sum(\"count\"))",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:34+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mallData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [user: int, artist: int ... 1 more field]\n\u001b[1m\u001b[34mdataset_clustering\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [id: int, user: int ... 2 more fields]\n\u001b[1m\u001b[34mcounting\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, sum(count): bigint]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654643010076_469690723",
+      "id": "paragraph_1654643010076_469690723",
+      "dateCreated": "2022-06-07T23:03:30+0000",
+      "dateStarted": "2022-06-09T10:20:34+0000",
+      "dateFinished": "2022-06-09T10:20:35+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:176"
+    },
+    {
+      "text": "z.show(counting.filter(col(\"style\").contains(\"metal\")))",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:35+0000",
+      "progress": 24,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "pieChart",
+              "height": 850.365,
+              "optionOpen": true,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "style": "string",
+                      "sum(count)": "string"
+                    },
+                    "updated": true
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "stackedAreaChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                },
+                "lineChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "style",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "sum(count)",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": false
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654643296519_1713217294",
+      "id": "paragraph_1654643296519_1713217294",
+      "dateCreated": "2022-06-07T23:08:16+0000",
+      "dateStarted": "2022-06-08T09:40:27+0000",
+      "dateFinished": "2022-06-08T09:41:17+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:177"
+    },
+    {
+      "text": "val metal = dataset_clustering.filter(col(\"style\").contains(\"metal\"))\nval rap = dataset_clustering.filter(col(\"style\").contains(\"rap\"))\nval dataset_clustering_2 = metal.union(rap)\n\n//val dataset_clustering_2 = dataset_clustering\ndataset_clustering_2.show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:20:35+0000",
+      "progress": 84,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-------+-------+-----+-----+\n|     id|   user|count|style|\n+-------+-------+-----+-----+\n|1008233|1000180|   18|metal|\n|1008233|1000793|    2|metal|\n|1008233|1001096|    2|metal|\n|1008233|1001411|    1|metal|\n|1008233|1001535|   32|metal|\n|1008233|1001535|   12|metal|\n|1008233|1001753|    7|metal|\n|1008233|1001800|    1|metal|\n|1008233|1001919|   14|metal|\n|1008233|1002141|    1|metal|\n|1008233|1002642|    1|metal|\n|1008233|1002815|    2|metal|\n|1008233|1002928|    1|metal|\n|1008233|1003248|    6|metal|\n|1008233|1003297|    1|metal|\n|1008233|1003317|    2|metal|\n|1008233|1003319|    4|metal|\n|1008233|1003339|    1|metal|\n|1008233|1003361|    2|metal|\n|1008233|1003655|    7|metal|\n+-------+-------+-----+-----+\nonly showing top 20 rows\n\n\u001b[1m\u001b[34mmetal\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [id: int, user: int ... 2 more fields]\n\u001b[1m\u001b[34mrap\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [id: int, user: int ... 2 more fields]\n\u001b[1m\u001b[34mdataset_clustering_2\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [id: int, user: int ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=370",
+              "$$hashKey": "object:1492"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654764028143_1218714254",
+      "id": "paragraph_1654764028143_1218714254",
+      "dateCreated": "2022-06-09T08:40:28+0000",
+      "dateStarted": "2022-06-09T10:20:35+0000",
+      "dateFinished": "2022-06-09T10:21:26+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:178"
+    },
+    {
+      "text": "//val artist_id_idcat = spark.createDataFrame(dataset_clustering_2.map(r => r.getInt(0)).distinct.collect.zipWithIndex).toDF(\"artist\",\"catid\")\n//val df = dataset_clustering_2.join(artist_id_idcat, artist_id_idcat.col(\"artist\") === dataset_clustering_2.col(\"id\")).select(   \"user\",\"count\", \"style\", \"id\",\"catid\").cache\n\nval user_id_idcat = spark.createDataFrame(dataset_clustering_2.map(r => r.getInt(1)).distinct.collect.zipWithIndex).toDF(\"userid\",\"catid\")\nval df = dataset_clustering_2.join(user_id_idcat, user_id_idcat.col(\"userid\") === dataset_clustering_2.col(\"user\")).select(   \"user\",\"count\", \"style\", \"id\",\"catid\").cache\n\ndf.sort(\"user\").show()\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:21:26+0000",
+      "progress": 62,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+----+-----+--------------------+-------+-----+\n|user|count|               style|     id|catid|\n+----+-----+--------------------+-------+-----+\n|  90|    1|           metalcore|1001762|85135|\n| 321|    1|        hardcore rap|1066270| 5041|\n| 321|    3|                 rap|1050750| 5041|\n| 321|    3|             pop rap|   2178| 5041|\n| 321|   56|         death metal|1233342| 5041|\n| 321|    6|             pop rap|   1314| 5041|\n| 321|   24|         death metal|    352| 5041|\n| 321|    1|      east coast rap|2076146| 5041|\n| 321|    1|               metal|   4216| 5041|\n| 321|    1|               metal|1042082| 5041|\n| 321|    2|         detroit rap|1019163| 5041|\n| 321|    3|               metal|1017701| 5041|\n| 321|    4|   progressive metal|1010198| 5041|\n| 321|    2|           metalcore|   1620| 5041|\n| 321|    3|        thrash metal|   1180| 5041|\n| 321|  106|        groove metal|1005990| 5041|\n| 321|   13|          doom metal|1005234| 5041|\n| 321|    7|               metal|1000620| 5041|\n| 321|    4|progressive death...|   2010| 5041|\n| 321|   14|               metal|1000744| 5041|\n+----+-----+--------------------+-------+-----+\nonly showing top 20 rows\n\n\u001b[1m\u001b[34muser_id_idcat\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [userid: int, catid: int]\n\u001b[1m\u001b[34mdf\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [user: int, count: int ... 3 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=373",
+              "$$hashKey": "object:1538"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=377",
+              "$$hashKey": "object:1539"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654715062218_1605215813",
+      "id": "paragraph_1654715062218_1605215813",
+      "dateCreated": "2022-06-08T19:04:22+0000",
+      "dateStarted": "2022-06-09T10:21:26+0000",
+      "dateFinished": "2022-06-09T10:21:53+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:179"
+    },
+    {
+      "text": "df.agg(max(\"catid\")).show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:21:53+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+----------+\n|max(catid)|\n+----------+\n|    113014|\n+----------+\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=378",
+              "$$hashKey": "object:1589"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654761673385_1043699079",
+      "id": "paragraph_1654761673385_1043699079",
+      "dateCreated": "2022-06-09T08:01:13+0000",
+      "dateStarted": "2022-06-09T10:21:53+0000",
+      "dateFinished": "2022-06-09T10:21:54+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:180"
+    },
+    {
+      "text": "val convertToDouble = udf((array: Array[Int]) => {\n  array.map(_.toDouble).toArray\n})\n\n\nval user_id = df.where($\"catid\" < 1000).sort(\"style\",\"catid\").groupBy(\"style\",\"catid\").agg(sum(\"count\").alias(\"count\"),collect_list(\"user\").alias(\"user\")).groupBy(\"style\").agg(collect_list(\"count\").alias(\"count\"),collect_list(\"user\").alias(\"user\"),collect_list(\"catid\").alias(\"catid\"))\n\n\nuser_id.show",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:21:54+0000",
+      "progress": 3,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------------------+--------------------+--------------------+--------------------+\n|               style|               count|                user|               catid|\n+--------------------+--------------------+--------------------+--------------------+\n|        german metal|           [3, 3, 3]|[[2159915], [2255...|     [218, 304, 624]|\n|           dutch rap| [4, 1, 2, 14, 3, 1]|[[2038737], [2133...|[110, 198, 279, 4...|\n|          euro metal|        [1, 8, 2, 1]|[[2295954], [1001...|[341, 555, 572, 658]|\n|brutal technical ...|[3, 1, 1, 2, 5, 4...|[[1000190], [1009...|[0, 10, 13, 29, 3...|\n|slavonic pagan metal|[49, 10, 5, 12, 1...|[[1038247], [2295...|[23, 341, 553, 57...|\n|new york death metal|           [1, 7, 1]|[[2401781], [1003...|     [467, 559, 773]|\n|    death/doom metal|[4, 1, 1, 1, 2, 2...|[[2028834], [2140...|[99, 202, 312, 38...|\n|norwegian black m...|[1, 3, 1, 3, 15, ...|[[1049740], [2054...|[36, 129, 175, 58...|\n|     underground rap|[1, 1, 2, 4, 1, 8...|[[1064231], [2038...|[49, 110, 117, 15...|\n|  brutal death metal|[1, 1, 1, 10, 116...|[[1048223], [1048...|[32, 34, 40, 41, ...|\n|           osnametal|          [18, 1, 3]|[[2017174], [2235...|     [663, 868, 953]|\n|           rap metal|  [18, 2, 6, 30, 62]|[[2150567, 215056...|[209, 250, 721, 7...|\n|            acid rap|              [1, 1]|[[1064231], [2199...|           [49, 834]|\n|blackened death m...|  [1, 6, 2, 1, 2, 1]|[[1043149], [2038...|[28, 110, 123, 37...|\n|progressive heavy...|                 [1]|         [[2154464]]|               [212]|\n|    avantgarde metal|           [2, 2, 4]|[[2088738], [2295...|     [164, 341, 864]|\n|  scandinavian metal|                 [4]|         [[2084802]]|               [156]|\n|old school thrash...|              [5, 1]|[[2093778], [2349...|          [752, 993]|\n|       louisiana rap|          [12, 4, 1]|[[2084802], [2440...|     [156, 518, 662]|\n|       melodic metal|[1, 4, 17, 1, 4, ...|[[1031874], [1037...|[20, 22, 23, 25, ...|\n+--------------------+--------------------+--------------------+--------------------+\nonly showing top 20 rows\n\n\u001b[1m\u001b[34mconvertToDouble\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.expressions.UserDefinedFunction\u001b[0m = SparkUserDefinedFunction($Lambda$5425/100018985@274bfd0d,ArrayType(DoubleType,false),List(Some(class[value[0]: array<int>])),Some(class[value[0]: array<double>]),None,true,true)\n\u001b[1m\u001b[34muser_id\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, count: array<bigint> ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=379",
+              "$$hashKey": "object:1635"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=380",
+              "$$hashKey": "object:1636"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=381",
+              "$$hashKey": "object:1637"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=382",
+              "$$hashKey": "object:1638"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=383",
+              "$$hashKey": "object:1639"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654702388806_1649444880",
+      "id": "paragraph_1654702388806_1649444880",
+      "dateCreated": "2022-06-08T15:33:08+0000",
+      "dateStarted": "2022-06-09T10:21:54+0000",
+      "dateFinished": "2022-06-09T10:21:59+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:181"
+    },
+    {
+      "text": "import org.apache.spark.ml.linalg.SparseVector\nimport org.apache.spark.ml.linalg.Vectors\nimport org.apache.spark.sql.Dataset\nimport org.apache.spark.sql.Column\nimport scala.collection.mutable.WrappedArray\n\n\nval convertToVector = udf((indices: Array[Int],values: Array[Double]) => {\n //Vectors.sparse(10793426, indices, values).toDense()\n  Vectors.sparse(1000, indices, values)\n\n  \n})\n\nval ds = user_id.limit(1000).withColumn(\"vectors\", convertToVector(user_id.col(\"catid\") ,user_id.col(\"count\")))\n//Dataset<SparseVector> newDs = user_id.withColumn(\"vectors\", convertToVector(user_id.col(\"artist\") ,user_id.col(\"count\"))).select(\"vectors\")\nds.cache.show\nval dstest = ds.limit(10)\n\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:21:59+0000",
+      "progress": 90,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------------------+--------------------+--------------------+--------------------+--------------------+\n|               style|               count|                user|               catid|             vectors|\n+--------------------+--------------------+--------------------+--------------------+--------------------+\n|        german metal|           [3, 3, 3]|[[2159915], [2255...|     [218, 304, 624]|(1000,[218,304,62...|\n|           dutch rap| [4, 1, 2, 14, 3, 1]|[[2038737], [2133...|[110, 198, 279, 4...|(1000,[110,198,27...|\n|          euro metal|        [1, 8, 2, 1]|[[2295954], [1001...|[341, 555, 572, 658]|(1000,[341,555,57...|\n|brutal technical ...|[3, 1, 1, 2, 5, 4...|[[1000190], [1009...|[0, 10, 13, 29, 3...|(1000,[0,10,13,29...|\n|slavonic pagan metal|[49, 10, 5, 12, 1...|[[1038247], [2295...|[23, 341, 553, 57...|(1000,[23,341,553...|\n|new york death metal|           [1, 7, 1]|[[2401781], [1003...|     [467, 559, 773]|(1000,[467,559,77...|\n|    death/doom metal|[4, 1, 1, 1, 2, 2...|[[2028834], [2140...|[99, 202, 312, 38...|(1000,[99,202,312...|\n|norwegian black m...|[1, 3, 1, 3, 15, ...|[[1049740], [2054...|[36, 129, 175, 58...|(1000,[36,129,175...|\n|     underground rap|[1, 1, 2, 4, 1, 8...|[[1064231], [2038...|[49, 110, 117, 15...|(1000,[49,110,117...|\n|  brutal death metal|[1, 1, 1, 10, 116...|[[1048223], [1048...|[32, 34, 40, 41, ...|(1000,[32,34,40,4...|\n|           osnametal|          [18, 1, 3]|[[2017174], [2235...|     [663, 868, 953]|(1000,[663,868,95...|\n|           rap metal|  [18, 2, 6, 30, 62]|[[2150567, 215056...|[209, 250, 721, 7...|(1000,[209,250,72...|\n|            acid rap|              [1, 1]|[[1064231], [2199...|           [49, 834]|(1000,[49,834],[1...|\n|blackened death m...|  [1, 6, 2, 1, 2, 1]|[[1043149], [2038...|[28, 110, 123, 37...|(1000,[28,110,123...|\n|progressive heavy...|                 [1]|         [[2154464]]|               [212]|  (1000,[212],[1.0])|\n|    avantgarde metal|           [2, 2, 4]|[[2088738], [2295...|     [164, 341, 864]|(1000,[164,341,86...|\n|  scandinavian metal|                 [4]|         [[2084802]]|               [156]|  (1000,[156],[4.0])|\n|old school thrash...|              [5, 1]|[[2093778], [2349...|          [752, 993]|(1000,[752,993],[...|\n|       louisiana rap|          [12, 4, 1]|[[2084802], [2440...|     [156, 518, 662]|(1000,[156,518,66...|\n|       melodic metal|[1, 4, 17, 1, 4, ...|[[1031874], [1037...|[20, 22, 23, 25, ...|(1000,[20,22,23,2...|\n+--------------------+--------------------+--------------------+--------------------+--------------------+\nonly showing top 20 rows\n\nimport org.apache.spark.ml.linalg.SparseVector\nimport org.apache.spark.ml.linalg.Vectors\nimport org.apache.spark.sql.Dataset\nimport org.apache.spark.sql.Column\nimport scala.collection.mutable.WrappedArray\n\u001b[1m\u001b[34mconvertToVector\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.expressions.UserDefinedFunction\u001b[0m = SparkUserDefinedFunction($Lambda$5426/839161380@6ebb016a,org.apache.spark.ml.linalg.VectorUDT@3bfc3ba7,List(Some(class[value[0]: array<int>]), Some(class[value[0]: array<double>])),Some(class[value[0]: vector]),None,true,true)\n\u001b[1m\u001b[34mds\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, count: array<bigint> ... 3 more fields]\n\u001b[1m\u001b[34mdstest\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[org.apache.spark.sql.Row]\u001b[0m = [style: string, count: array<bigint> ... 3 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=384",
+              "$$hashKey": "object:1701"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=385",
+              "$$hashKey": "object:1702"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654704455390_1463546451",
+      "id": "paragraph_1654704455390_1463546451",
+      "dateCreated": "2022-06-08T16:07:35+0000",
+      "dateStarted": "2022-06-09T10:21:59+0000",
+      "dateFinished": "2022-06-09T10:22:05+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:182"
+    },
+    {
+      "text": "import org.apache.spark.rdd.RDD\nval realout : RDD[SparseVector] = ds.rdd.map(row => row.getAs[org.apache.spark.ml.linalg.SparseVector](\"vectors\"))\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:22:05+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "import org.apache.spark.rdd.RDD\n\u001b[1m\u001b[34mrealout\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.rdd.RDD[org.apache.spark.ml.linalg.SparseVector]\u001b[0m = MapPartitionsRDD[2565] at map at <console>:114\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654729996120_1171048880",
+      "id": "paragraph_1654729996120_1171048880",
+      "dateCreated": "2022-06-08T23:13:16+0000",
+      "dateStarted": "2022-06-09T10:22:05+0000",
+      "dateFinished": "2022-06-09T10:22:06+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:183"
+    },
+    {
+      "text": "import org.apache.spark.ml.feature.PCA\nval df = spark.createDataFrame(realout.collect.map(Tuple1.apply)).toDF(\"vectors\")\n\nval pca = new PCA()\n    .setInputCol(\"vectors\")\n    .setOutputCol(\"pca\")\n    .setK(2)\n    .fit(df)\n// Project vectors to the linear space spanned by the top 5 principal\n// components, keeping the label\nval result = pca.transform(ds).select(\"style\",\"pca\");\n\nresult.show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:22:06+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------------------+--------------------+\n|               style|                 pca|\n+--------------------+--------------------+\n|        german metal|[-0.0233254958470...|\n|           dutch rap|[-0.4146421121247...|\n|          euro metal|[-0.0432292965267...|\n|brutal technical ...|[-4.4554878391847...|\n|slavonic pagan metal|[-2.7403102643751...|\n|new york death metal|[-0.1057131963193...|\n|    death/doom metal|[-0.1422296529578...|\n|norwegian black m...|[-0.4609316537788...|\n|     underground rap|[-1.8032462080539...|\n|  brutal death metal|[-4.0923770408130...|\n|           osnametal|[-0.3496548088699...|\n|           rap metal|[-4.9793443689192...|\n|            acid rap|[-0.0133491533136...|\n|blackened death m...|[-0.5501773915771...|\n|progressive heavy...|[-0.0071189978916...|\n|    avantgarde metal|[-0.0563411741996...|\n|  scandinavian metal|[-0.4242171626054...|\n|old school thrash...|[-0.0363010939404...|\n|       louisiana rap|[-1.3083925182345...|\n|       melodic metal|[-20.659576879482...|\n+--------------------+--------------------+\nonly showing top 20 rows\n\nimport org.apache.spark.ml.feature.PCA\n\u001b[1m\u001b[34mdf\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [vectors: vector]\n\u001b[1m\u001b[34mpca\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.ml.feature.PCAModel\u001b[0m = PCAModel: uid=pca_28fde016b783, k=2\n\u001b[1m\u001b[34mresult\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, pca: vector]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=386",
+              "$$hashKey": "object:1792"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=387",
+              "$$hashKey": "object:1793"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=388",
+              "$$hashKey": "object:1794"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=389",
+              "$$hashKey": "object:1795"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=390",
+              "$$hashKey": "object:1796"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=391",
+              "$$hashKey": "object:1797"
+            },
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=392",
+              "$$hashKey": "object:1798"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654705107361_1065236101",
+      "id": "paragraph_1654705107361_1065236101",
+      "dateCreated": "2022-06-08T16:18:27+0000",
+      "dateStarted": "2022-06-09T10:22:06+0000",
+      "dateFinished": "2022-06-09T10:22:18+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:184"
+    },
+    {
+      "text": "import org.apache.spark.ml.linalg.Vector\nval xColumnExtractor = udf((v: Vector) => v(0))\nval yColumnExtractor = udf((v: Vector) => v(1))\nval exploded_result = result.select(\n    result.col(\"style\"),\n    xColumnExtractor($\"pca\").as(\"X\"),\n    yColumnExtractor($\"pca\").as(\"Y\"),\n    )\n    \nexploded_result.show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:22:18+0000",
+      "progress": 6,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------------------+--------------------+--------------------+\n|               style|                   X|                   Y|\n+--------------------+--------------------+--------------------+\n|        german metal|-0.02332549584707...| 0.07038652497505553|\n|           dutch rap|-0.41464211212475444|  2.1856723011009858|\n|          euro metal|-0.04322929652679353| 0.29626568402678083|\n|brutal technical ...|  -4.455487839184764|   4.650111895934215|\n|slavonic pagan metal|  -2.740310264375195|   2.348671824371489|\n|new york death metal|-0.10571319631930513|  0.1433910765611462|\n|    death/doom metal| -0.1422296529578389| 0.24862749574660972|\n|norwegian black m...|-0.46093165377888345|  0.5026841472916259|\n|     underground rap|  -1.803246208053944|  4.3429088085083025|\n|  brutal death metal|  -4.092377040813058|   9.364300115894665|\n|           osnametal|-0.34965480886994266|   2.242362891674749|\n|           rap metal|  -4.979344368919288|  1.6317718083468804|\n|            acid rap|-0.01334915331369...|0.015869755964437373|\n|blackened death m...| -0.5501773915771946|   3.211324328188171|\n|progressive heavy...|-0.00711899789168...|0.023927404762891034|\n|    avantgarde metal|-0.05634117419962849| 0.08497288762105867|\n|  scandinavian metal| -0.4242171626054673|  0.5611963307795074|\n|old school thrash...|-0.03630109394043774| 0.08264313596902957|\n|       louisiana rap| -1.3083925182345726|  1.6769656427578392|\n|       melodic metal|  -20.65957687948247|  22.314705445835337|\n+--------------------+--------------------+--------------------+\nonly showing top 20 rows\n\nimport org.apache.spark.ml.linalg.Vector\n\u001b[1m\u001b[34mxColumnExtractor\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.expressions.UserDefinedFunction\u001b[0m = SparkUserDefinedFunction($Lambda$5431/1054667639@745978a1,DoubleType,List(Some(class[value[0]: vector])),Some(class[value[0]: double]),None,false,true)\n\u001b[1m\u001b[34myColumnExtractor\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.expressions.UserDefinedFunction\u001b[0m = SparkUserDefinedFunction($Lambda$5432/1604813328@3c8a42,DoubleType,List(Some(class[value[0]: vector])),Some(class[value[0]: double]),None,false,true)\n\u001b[1m\u001b[34mexploded_result\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [style: string, X: double ... 1 more field]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=393",
+              "$$hashKey": "object:1868"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654762454012_1787134710",
+      "id": "paragraph_1654762454012_1787134710",
+      "dateCreated": "2022-06-09T08:14:14+0000",
+      "dateStarted": "2022-06-09T10:22:18+0000",
+      "dateFinished": "2022-06-09T10:22:19+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:185"
+    },
+    {
+      "text": "z.show(exploded_result.select(\"X\",\"Y\",\"style\"))",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:22:19+0000",
+      "progress": 10,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 11,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "scatterChart",
+              "height": 1120.36,
+              "optionOpen": true,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "X": "string",
+                      "Y": "string",
+                      "style": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "scatterChart": {
+                  "xAxis": {
+                    "name": "X",
+                    "index": 0,
+                    "aggr": "sum"
+                  },
+                  "yAxis": {
+                    "name": "Y",
+                    "index": 1,
+                    "aggr": "sum"
+                  },
+                  "group": {
+                    "name": "style",
+                    "index": 2,
+                    "aggr": "sum"
+                  }
+                }
+              }
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TABLE",
+            "data": "X\tY\tstyle\n-0.023325495847075793\t0.07038652497505553\tgerman metal\n-0.41464211212475444\t2.1856723011009858\tdutch rap\n-0.04322929652679353\t0.29626568402678083\teuro metal\n-4.455487839184764\t4.650111895934215\tbrutal technical death metal\n-2.740310264375195\t2.348671824371489\tslavonic pagan metal\n-0.10571319631930513\t0.1433910765611462\tnew york death metal\n-0.1422296529578389\t0.24862749574660972\tdeath/doom metal\n-0.46093165377888345\t0.5026841472916259\tnorwegian black metal\n-1.803246208053944\t4.3429088085083025\tunderground rap\n-4.092377040813058\t9.364300115894665\tbrutal death metal\n-0.34965480886994266\t2.242362891674749\tosnametal\n-4.979344368919288\t1.6317718083468804\trap metal\n-0.013349153313694392\t0.015869755964437373\tacid rap\n-0.5501773915771946\t3.211324328188171\tblackened death metal\n-0.007118997891689581\t0.023927404762891034\tprogressive heavy metal\n-0.05634117419962849\t0.08497288762105867\tavantgarde metal\n-0.4242171626054673\t0.5611963307795074\tscandinavian metal\n-0.03630109394043774\t0.08264313596902957\told school thrash metal\n-1.3083925182345726\t1.6769656427578392\tlouisiana rap\n-20.65957687948247\t22.314705445835337\tmelodic metal\n-25.891058157595403\t16.00837605605212\tamerican metal\n11.574323045043188\t26.13192546316171\ttech metal\n-0.5452424316737536\t-0.05545740777038816\thorrorcore rap\n-7.334453698004567\t16.281745835692846\tindustrial metal\n-0.12054675979254591\t0.20654540175512404\ttrue black metal\n-0.01620163166994668\t0.10838757534375609\tamerican metalcore\n-0.01111101827455534\t0.02672466968839622\tpagan metal\n-48.230602721045166\t51.03883825923398\tgothic metal\n-0.6548427504073506\t1.4844428513487706\tsymphonic metal\n-0.024185984668896373\t0.13102272002700882\tfinnish heavy metal\n-5.7052681281250965\t41.67877162336321\tmelodic metalcore\n-1.978202919168668\t3.647471346064322\tnorwegian metal\n-0.624679732819519\t0.4099757126562923\tmelodic black metal\n-0.0029150998524543523\t0.002140528068028986\trapper\n-5.717102833747344\t60.33154143448618\tstoner doom metal\n-0.05881354544853766\t0.36493369354756394\tpower thrash metal\n-13.789039834197533\t112.29439673161266\thair metal\n-4.202206573546595\t5.864360480577564\tblack metal\n-8.611307041819508\t7.503162902122975\teast coast rap\n-1.1829120835774716\t1.6440011748216623\tfunk metal\n-0.1159735100019546\t0.21397005748405515\tmelodic heavy metal\n-0.009492509926732855\t0.03545872472692681\tambient black metal\n-458.34839339167934\t260.19551680642195\theavy metal\n-0.21564433543267034\t0.0974342937895804\tjazz rap\n-0.0858449653697541\t0.3734673614536859\trapcore\n-6.524453803006179\t0.2903309719920936\tjazz metal\n-0.007945323208261405\t0.019707815092874805\tdrone metal\n-1.3654241997006056\t5.720700461818909\tmemphis rap\n-0.5645121948290822\t2.024267594592512\tspeed metal\n-1.7212825072839493\t4.237689969385876\tparty rap\n-0.8353666863529159\t0.4741610478751821\trap rock\n-183.75717110609628\t137.35916526340978\tdoom metal\n-19.83306928095199\t65.1683115222252\tmidwest rap\n-0.011806934725529168\t0.03376141760574232\tglam metal\n-2.9682642188344044\t18.465454453857642\tmetal punk\n-1.5849900554580911\t12.154505210612832\tchristian rap\n-1.8530410322212147\t14.458299069625662\told school rap\n-40.69980902466827\t13.094535301409682\tsouthern rap\n-8.10109826709799\t11.461700859891359\tgangster rap\n-12.796267776109477\t20.9163924211051\tchristian metalcore\n-1.8428370803735288\t4.543986734365762\tfolk metal\n-0.044153828883682314\t0.1948361100827742\thappy metal\n-0.47591470021023075\t0.9673323821630724\trussian metal\n-0.045132425540327314\t0.04570497249773225\tneometal\n-0.025827469556702298\t0.013192632609494886\twhite metal\n-6.312249910264194\t19.803456273479792\tnerd rap\n-204.9047480079809\t389.7100041259668\trap\n-1.0550361472535115\t3.067170908575345\ttechnical death metal\n-2197.043075171611\t-319.78674485753356\tdeath metal\n-0.6706744982130788\t0.5024569009973096\tfrench metal\n-4.090676127175602\t1.0996412521403318\tviking metal\n-18.03573785712062\t21.758645117157766\tprogressive metal\n-0.20438580425750774\t0.194883511771274\trap - hip hop\n-1.1201566964640366\t4.5768356172181\ttrash metal\n-113.58157718799168\t44.6380308957623\tmetalcore\n-3.2937698491812697E-4\t0.005606431544877355\tspanish metal\n-0.09192377830849273\t-0.006430311983494037\tdark metal\n-25.27950726010497\t14.668217579082382\talternative metal\n-187.20042126664828\t-36.80945035394786\thardcore rap\n-40.18726049974405\t72.0400490032053\tgroove metal\n-384.40158068732086\t1329.9646901018987\tmetal\n-0.5363946988418792\t1.2426512413426811\tzommetal\n-0.03704498722339478\t0.12280828387457128\tmodern metal\n-8.976465489184424\t9.08459076584163\tprogressive death metal\n-50.78523663874552\t30.13945612183325\tpower metal\n-0.5296979412102603\t0.6509882991181272\tfrench black metal\n-0.30830734734898796\t0.19881163411865727\tprogressive power metal\n-0.7490211462392452\t2.909555106131899\tsympho black metal\n-0.37617151542155913\t0.6212421231589254\tuk metal\n-28.69466259563697\t15.573681563742651\tpure metal\n-0.22053236020158537\t0.5846246376252452\tus power metal\n-0.651663887251193\t0.33118320871608603\trap francais\n-4.489379519109327\t-0.7690480756555723\textreme metal\n-0.001682673683627749\t0.011905307319501748\trock metal\n-0.013070326951676528\t0.06914316182392495\tprogressive doom metal\n-0.5770011182652443\t-0.1603015315510437\tgothic doom metal\n-0.4727834291451316\t1.6010633855184098\tstoner metal\n-39.962933102292574\t-9.237081659864954\tdirty south rap\n-0.04077530157179811\t0.10565497260338119\tfolk black metal\n-48.518259787511994\t114.99008464701843\tthrash metal\n-183.51732935097866\t325.5872754778459\tpop rap\n-1.3206245594451385\t3.600171241113869\thardcore and metal\n7.041387547764186E-6\t-1.1826769329440926E-5\tprogressive black metal\n-1.6411545667021983\t4.2575804398262065\tlatin rap\n-0.6460200244408189\t1.6305968360476844\twest coast rap\n-0.026667108524682962\t0.13544765268033704\tneo classical metal\n-0.09212681487336942\t0.3516575457342106\tspanish rap\n-0.04010845581484116\t0.01734655137951591\trap us\n-2.3122576106193846\t1.0838540066126636\tepic metal\n-1.6732658351533523\t0.34937656825114316\tfemale fronted metal\n-1.5011279425659472\t-0.13406972904274328\ttrue metal\n5.448047315962184E-4\t-0.001359992710675689\ttechnical brutal death metal\n-2.124182799865459E-5\t1.2271368577355889E-4\tgerman metalcore\n-0.04354564514416584\t-0.0034354430429566407\tblackened thrash metal\n-0.48865837212808505\t0.5269248006830748\tgore metal\n-0.016743747516419206\t0.11984497718847416\tmetal opera\n-45.558735316517904\t204.2625744915419\tnu metal\n-5.027966213274247\t20.160466432054218\tsludge metal\n-3.9906032563639964\t4.253624801816118\tmelodic death metal\n-0.5232522897566781\t2.2841434065120536\talternative rap\n-1.3463133836795933\t-0.3740751215566707\tdeath/thrash metal\n-0.1160935196439651\t0.6766431718946496\tbritish metal\n-16.38461228673303\t6.169948722840923\tpunk metal\n-0.056584511455953286\t0.09144376519518327\ttechnical metalcore\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://f5f084824e73:4040/jobs/job?id=394",
+              "$$hashKey": "object:1914"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654764530494_720338835",
+      "id": "paragraph_1654764530494_720338835",
+      "dateCreated": "2022-06-09T08:48:50+0000",
+      "dateStarted": "2022-06-09T10:22:19+0000",
+      "dateFinished": "2022-06-09T10:22:20+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:186"
+    },
+    {
+      "text": "z.show(exploded_result.select(\"X\",\"Y\",\"style\"))",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T10:22:20+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "scatterChart",
+              "height": 2681.61,
+              "optionOpen": true,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "X": "string",
+                      "Y": "string",
+                      "style": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "scatterChart": {
+                  "xAxis": {
+                    "name": "X",
+                    "index": 0,
+                    "aggr": "sum"
+                  },
+                  "yAxis": {
+                    "name": "Y",
+                    "index": 1,
+                    "aggr": "sum"
+                  },
+                  "group": {
+                    "name": "style",
+                    "index": 2,
+                    "aggr": "sum"
+                  }
+                }
+              }
+            },
+            "helium": {}
+          }
+        },
+        "enabled": false
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654762519836_1306134402",
+      "id": "paragraph_1654762519836_1306134402",
+      "dateCreated": "2022-06-09T08:15:19+0000",
+      "dateStarted": "2022-06-09T09:08:25+0000",
+      "dateFinished": "2022-06-09T09:08:27+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:187"
+    }
+  ],
+  "name": "music_clustering",
+  "id": "2H6FTKFN1",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.10.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {
+    "isRunning": false
+  },
+  "path": "/music_clustering"
+}
