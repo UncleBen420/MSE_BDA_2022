@@ -31,11 +31,11 @@ http://millionsongdataset.com/
 
 https://www.kaggle.com/general/168181
 
-# Description des features et du prétraitement
+## Description des features et du prétraitement
 
-# Description du projet de base
+## Description du projet de base
 
-# Description du Modèle
+## Description du Modèle
 
 # Questions supplémentaires
 Dans le cadre du projet, Nous devons aussi résoudre des problématiques choisies par nous même. Nous avons choisi d'en ajouter 3 (une par membres du groupe).
@@ -54,3 +54,5 @@ Une autre question qu'il serait interressante de poser et "**Est-ce que des clus
 
 Les données fournies par le dataset sont très limitées. Il serait intéressant d'extraire des features supplémentaires à partir d'un de données disponibles.
 Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes était correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
+
+# Conclusion
