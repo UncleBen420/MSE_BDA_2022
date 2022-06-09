@@ -83,6 +83,9 @@ Il faut ici un peu d'habilité avec les commandes Spark et également une bonne 
 ### Optimisations you performed
 Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner
 une idée sur le nombre de fois qu'il a été illégalement téléchargé.
+
+![misspelled count](ReadmeImage/Torrent/misspelledArtistCount.png)
+
 Une seconde étape est de connaitre le nombre d'utilisateur qui écoute chaque artiste. Ceci nous permettra de calculer un ratio
 torrent/achat pour chaque artiste.
 
@@ -94,6 +97,8 @@ Une "cross-validation" ratio/nombre de mauvaises orthographe/artiste a été ré
 sont correctes mais qu'il y a des soucis dû aux datasets.
 
 ### Results you obtained
+![misspelled ratio ](ReadmeImage/Torrent/ratioPirateMisspelledCount.png)
+![graph ratioTorrent](ReadmeImage/Torrent/graphPirateRationAsc.png)
 
 ### Possible future enhancements
 Il y a plusieurs points qui nous font dire que l'approche utilisée ici n'est pas fiable à 100%.
