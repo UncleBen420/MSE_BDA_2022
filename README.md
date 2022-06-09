@@ -74,9 +74,26 @@ Les données fournies par le dataset sont très limitées. Il serait intéressan
 Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes était correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
 
 ### Algorithms you applied
+Aucun algothime n'a du être utiliser pour cette partie. Il faut ici jongler avec les différents datasets et en extraire les données partinentes.
+Il faut ici un peu d'habilité avec les commandes Spark et également une bonne vision d'ensemble.
 ### Optimisations you performed
+Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner
+une idée sur le nombre de fois qu'il a été illégalement téléchargé.
+Une seconde étape est de connaitre le nombre d'utilisateur qui écoute chaque artiste. Ceci nous permettra de calculer un ratio
+torrent/achat pour chaque artiste.
+
+Dans l'interval un comptage total du nombre de mauvaises orthographes sur le nombre total d'apparition des artistes nous donne 
+un valeur symbolique de 1.216% de torrent par rapport aux musiques achetées.
+
 ### Your approach to testing and evaluation
+Une "cross-validation" ratio/nombre de mauvaises orthographe/artiste a été réalisée. Cela démontre que les manipulations des dataframes
+sont correctes mais qu'il y a des soucis dû aux datasets.
+
 ### Results you obtained
+
 ### Possible future enhancements
+Il y a plusieurs points qui nous font dire que l'approche utilisée ici n'est pas fiable à 100%.
+1. Il y a des valeurs manquantes dans les données, ce qui fausse les résultats (ex: ratio de 2.4)
+2. Même si un artiste est bien orthographié, cela ne veut en aucun cas qu'il n'a pas été piraté
 
 # Conclusion
