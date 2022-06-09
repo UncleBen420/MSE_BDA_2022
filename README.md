@@ -37,6 +37,8 @@ https://www.kaggle.com/general/168181
 
 ## Description du Modèle
 
+![matrix factorisation](ReadmeImage/ALS_matrix_factorisation.png)
+
 # Questions supplémentaires
 Dans le cadre du projet, Nous devons aussi résoudre des problématiques choisies par nous même. Nous avons choisi d'en ajouter 3 (une par membres du groupe).
 
@@ -46,27 +48,29 @@ Dans le projet de base, l'algorithme utilisé (ALS) est un algorithme de collabo
 
 Alors qu'une autre question pourrait être posée : "**Quels sont les artistes qui apparaissent fréquemment ensemble ?**" Cette question peut être répondue avec une analyse du panier d'achat ou règle d'association. Notre intention est donc d'utiliser cet algorithme pour voir si effectivement, il permet de répondre à cette question.
 
+### Algorithms you applied
+### Optimisations you performed
+### Your approach to testing and evaluation
+### Results you obtained
+### Possible future enhancements
+
+## Clustering visualisation
+​
+Une autre question qu'il serait interressante de poser et "**Est-ce que des clusters apparaissent entre les artistes?**" ou "**Est-ce qu'on peut distinguer les genres musicaux avec simplement les données de base ?**". Pour prouver la veracité des résultats un 2ème dataset devra être utilisé pour vérifer les clusters.
+
 ### Algorithmes appliqués
 
+
+
 ### Optimisations
+
+
 
 ### Your approach to testing and evaluation
 
 ### Resultats
 
 ### Amélioration futures
-
-## Clustering visualisation
-​
-Une autre question qu'il serait interressante de poser et "**Est-ce que des clusters apparaissent entre les artistes?**" ou "**Est-ce qu'on peut distinguer les genres musicaux avec simplement les données de base ?**". Pour prouver la veracité des résultats un 2ème dataset devra être utilisé pour vérifer les clusters.
-
-### Algorithms you applied
-
-
-### Optimisations you performed
-### Your approach to testing and evaluation
-### Results you obtained
-### Possible future enhancements
 
 ## Ratio torrent achat
 
