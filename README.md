@@ -7,10 +7,10 @@ Nous avons pris "**Recommending Music and the Audioscrobbler Data Set**". Il s'a
 
 # Description du Dataset
 
-Les données proviennent d'un ancien système de recommendation de musique appelé Audioscrobbler. Il était proposé par last.fm, un des premiers sites de streaing de music. L'idée était que les utilisateurs ajoutaient le plugin à leur lecteur. Celui-ci analyse les écoutes faites par les utilisateurs de la manière suivante:
+Les données proviennent d'un ancien système de recommendation de musique appelé Audioscrobbler. Il était proposé par last.fm, un des premiers sites de streaming de musique. L'idée était que les utilisateurs ajoutaient le plugin à leur lecteur mp3. Celui-ci analyse les écoutes faites par les utilisateurs de la manière suivante:
 Un utilisateur X à écouter l'artiste Y.
 Ceci est très sommaire car nous n'avons pas d'autres informations sur la musique, le genre, etc...
-Mais il a été très populaire car il pouvait être ajouter à des application tierce facilement.
+Mais il a été très populaire car il pouvait être ajouter à des applications tierces facilement.
 Un point à noter est que les données étaient envoyées par l'utilisateur. C.à.d que chaque utilisateur X propose le nom de l'artiste Y. Donc un utilisateur peut orthographier un artiste de plusieurs façon par exemple: Metalica, Metallica, metalICA, etc... Il y a donc un travail de traitement des données.
 
 Le Dataset audioscrobbler dispose de 3 fichiers contenant des données:
@@ -29,34 +29,38 @@ Le Dataset audioscrobbler dispose de 3 fichiers contenant des données:
 
 ## Description des features et du prétraitement
 
-Voici la description des étapes réalisée pour obtenir un dataframe acceptable pour entrainer notre modèle. En effet les données de base ne sont pas forcément bien indexées. Par exemple, pour différencier les données par colonne, les fichier utilisent des tabulations mais certaines lignes n'ont pas de tabulation ou en ont trop.
+Voici la description des étapes réalisées pour obtenir un dataframe acceptable pour entrainer notre modèle. En effet les données de base ne sont pas forcément bien indexées. Par exemple, pour différencier les données par colonne, les fichiers utilisent des tabulations mais certaines lignes n'ont pas de tabulations ou en ont trop.
 Pour éviter donc les exceptions, Lors du mapping des données, à chaque ligne, une vérification est effectuée.
 
 Ci-dessous est présenté un diagram présentant le prétraitement effectué ainsi que divers dataframe utilisé pour effectuer des tests (en vert).
 
 ![diagram preprocessing](ReadmeImage/diagram_preprocess.png)
 
-D'abort 3 objects extrait des fichiers de base (un dataframe de ligne). Ces objects sont respectivement:
+D'abort 3 objects extraient les fichiers de base (les dataframe contiennent des lignes du fichier). Ces objects sont respectivement:
 
 - userArtistDf: ce dataframe de test a permis de déterminer le nombre actuel d'utilisateur et d'artiste pour voir si il tenait sur un Int.
+
 - artistAlias (Map): ce Map a permis de voir que le fichier row_artist_alias contient un nom d'artiste correctement ou mal orthographié mappé sur le nom d'artiste correct. par exemple si l'artiste 420 et mappé sur l'alias 420 alors on sait que celui-ci est le nom correct.
+
 - artistByID (DF): Ce dataframe permet de filter par id le nom d'un artiste. Donc depuis un id de retrouver sont nom, il est utilisé pour retrouver le nom depuis une prédiction.
 
-Pour obtenir le train dataset, il y a 2 étapes à effectuer. D'abort, le Map bartistAlias est créer, il fait la même chose que le Map artistAlias à l'exception qu'il est "broadcaster" (envoié à tout les noeuds de spark). Ensuite la fonction builCounts permet de créer le trainData en utilisant le fichier rawUserArtistData et bartistAlias. D'abort elle va pour chaque ligne, mapper l'id de l'utilisateur, l'id de l'artiste et le nombre d'écoute de l'utilisateur pour cet artiste. Une fois ceci fait il faut corriger l'artist id, en effet comme dit précédement certains artistes sont mal orthographiés et donc on un mauvais id.
+Pour obtenir le train dataset, il y a 2 étapes à effectuer. D'abort, le Map bartistAlias est créer, il fait la même chose que le Map artistAlias à l'exception qu'il est "broadcaster" (envoié à tout les noeuds de spark). Ensuite la fonction builCounts permet de créer le trainData en utilisant le fichier rawUserArtistData et bartistAlias.
+
+D'abort elle va pour chaque ligne, mapper l'id de l'utilisateur, l'id de l'artiste et le nombre d'écoute de l'utilisateur pour cet artiste. Une fois ceci fait il faut corriger l'artist id, en effet comme dit précédement certains artistes sont mal orthographiés et donc on un mauvais id.
 L'on peut réaliser un **bArtistAlias.value.getOrElse(artistID, artistID)**, ceci permet de regarder si l'id de l'artiste est mappé sur quelque chose (un artiste id correctement orthographié) et donc de récupérer l'id correctement orthographié. Sinon si aucune valeur n'est récupérée, cela veut dire que l'id est déjà associé à un nom correctement orthographié et donc pas besoin de le changé.
 
 Une fois tous ceci réalisé, nous obtenons un dataset d'entrainement.
 
 ## Description du projet de base
 
-Le projet a donc pour but de réaliser des recommendation à partir du dataframe testdata. Pour ceci nous utilisons l'algorithme ALS. ALS est idéal car il permet de faire des recommendation pour n'importe quel type d'utilisateurs (ceux qui écoute beaucoup de musique et ceux qui n'en écoute peu).
+Le projet a donc pour but de réaliser des recommendations à partir du dataframe testdata. Pour ceci nous utilisons l'algorithme ALS. ALS est idéal car il permet de faire des recommendations pour n'importe quel type d'utilisateurs (ceux qui écoutent beaucoup de musique et ceux qui n'en écoutent peu).
 Le type d'analyse est de type latent-factor c'est à dire qu'il permet d'observer l'interaction entre un large nombre d'utilisateur et un faible nombre d'observation.
 
-Après avoir entrainer le model, la méthode de prédiction mise en place prend pour un utilisateur donné, le itemFactors (vecteur des artistes). Il va ensuite pour chaque artiste dans le vecteur, les ordonnés par prédiction et retourner les id.
+Après avoir entrainer le model, la méthode de prédiction mise en place prend pour un utilisateur donné, le itemFactors (vecteur des artistes). Il va ensuite pour chaque artiste dans le vecteur, les ordonnés par prédiction et retourner les id_artist.
 Chaque id retourner sera transformer en nom à l'aide du dataframe artistByID. Une fois ceci réaliser, nous avons des recommendation personnalisée en fonction de l'utilisateur.
 
 Pour évaluer la qualité de la recommendation, il faut trouver une métrique. Une façon de décrire la qualité, est de dire que les artistes les mieux recommendés ont les meilleures probabilités.
-En comparant la somme de probabilités des meilleures recommendations avec celle des autres. On peut obtenir un ratio. Plus le ratio et élevé, plus les recommendation sont précises (seul les tops ont une probabilité élevée et le reste n'a pas de probabilité). Entre autre la qualité et évaluée en fonction de la saturation des recommentations.
+En comparant la somme de probabilités des meilleures recommendations avec celle des autres. On peut obtenir un ratio. Plus le ratio et élevé, plus les recommendations sont précises (seul les tops ont une probabilité élevée et le reste n'a pas de probabilité). Entre autre la qualité et évaluée en fonction de la saturation des recommentations.
 
 
 ## Description du Modèle
