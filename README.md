@@ -223,7 +223,11 @@ Il y a plusieurs points qui nous font dire que l'approche utilisée ici n'est pa
 3. Si un artiste à un nom compliqué, il a plus de chance d'être mal écrit lors du piratage qu'un nom simple.
 
 Cette analyse bien qu'intéressante n'est donc pas concrète par la base de donnée qui a certain manquant et le fait que l'on ne peut jamais être certain si la mauvaise orthographe est dû à un piratage ou non. Un contre exemple de mauvaise écriture serait l'acquisition d'un CD puis le transfère des titres sur un mp3. Dans certain cas, les pc,
-n'importaient pas le noms des artistes.
+n'importaient pas les noms des artistes.
 
 # Conclusion
+Ce projet nous a permis d'appréhender la manière de travailler avec des "big data" et "spark". Nous avons pu mettre en lumière que même si les données fournies
+ne sont pas nombreuses : informations sur les artistes, utilisateurs et nombre d'écoutes,  il est tout de même possible d'extraire de nombreuses "features" et de les exploiter avec différent algorithmes tel que du ML ou DL.
+De même, il est souvent difficile et long (effectuer un tâche de traitement) de travailler avec les "big data" il est donc nécessaire de bien comprendre les différents datasets en terme de structure et données.
 
+Budry, Dominguez, Vuagniaux
