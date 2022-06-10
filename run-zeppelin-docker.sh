@@ -46,6 +46,6 @@ docker run \
        -v "$PWD"/notebooks:/notebooks \
        -e ZEPPELIN_NOTEBOOK_DIR='/notebooks' \
        -e ZEPPELIN_INTP_MEM='-Xms1024m -Xmx4g -XX:MaxPermSize=4g'\
-       -e ZEPPELIN_JAVA_OPTS='-Dspark.driver.memory=2g -Dspark.executor.memory=4g -Dspark.cores.max=2'\
+       -e ZEPPELIN_JAVA_OPTS='-Dspark.driver.memory=4g -Dspark.executor.memory=4g -Dspark.cores.max=2'\
        -v "$PWD"/data:/data \
        $DOCKER_IMAGE_NAME
