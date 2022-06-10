@@ -49,11 +49,27 @@ Une fois tous ceci réalisé, nous obtenons un dataset d'entrainement.
 
 ## Description du projet de base
 
+Le projet a donc pour but de réaliser des recommendation à partir du dataframe testdata. Pour ceci nous utilisons l'algorithme ALS. ALS est idéal car il permet de faire des recommendation pour n'importe quel type d'utilisateurs (ceux qui écoute beaucoup de musique et ceux qui n'en écoute peu).
+Le type d'analyse est de type latent-factor c'est à dire qu'il permet d'observer l'interaction entre un large nombre d'utilisateur et un faible nombre d'observation.
+
+Après avoir entrainer le model, la méthode de prédiction mise en place prend pour un utilisateur donné, le itemFactors (vecteur des artistes). Il va ensuite pour chaque artiste dans le vecteur, les ordonnés par prédiction et retourner les id.
+Chaque id retourner sera transformer en nom à l'aide du dataframe artistByID. Une fois ceci réaliser, nous avons des recommendation personnalisée en fonction de l'utilisateur.
+
+Pour évaluer la qualité de la recommendation, il faut trouver une métrique. Une façon de décrire la qualité, est de dire que les artistes les mieux recommendés ont les meilleures probabilités.
+En comparant la somme de probabilités des meilleures recommendations avec celle des autres. On peut obtenir un ratio. Plus le ratio et élevé, plus les recommendation sont précises (seul les tops ont une probabilité élevée et le reste n'a pas de probabilité). Entre autre la qualité et évaluée en fonction de la saturation des recommentations.
 
 
 ## Description du Modèle
 
+Le modèle ALS (Alternating Least Squares) est un algorithme de collaborative filtering basé sur le machine learning. Son principe de base est une sorte de factorisation de matrice Item/User. Imaginons notre matrice composée des interactions utilisateurs/artistes (item) ou celle-ci sont le nombre d'écoute réalisées par utilisateur pour chaque artiste. Cette matrice est très éparse car il y a énormément d'artiste différents. La force de ALS est, malgré que ces données soit éparpillées, il arrive à en ressortir une compréhension.
+
+Comme le montre l'image ci-dessous ALS possède 2 matrices "factorisées" (user factor et item factor). Le principe d'ALS est de chercher à remplir ces matrices avec des données qui ont un sens. A la première itération de l'algorithme, l'une des matrices factorisées est remplie aléatoirement. A l'aide de l'algèbre matricelle ont peut déterminer les valeurs de la deuxième matrice factorisées:
+![principe](ReadmeImage/idee.png)
+Une fois ceci réaliser on peut chercher à minimisé l'erreur entre la factorisation et les données réels.: ![minimisation](ReadmeImage/minimise.png). Ensuite une fois les valeur de la matrice optimisée, les valeurs de la seconde matrice sont optimisée et ainsi de suite. D'ou le nom Alternating (l'alternance entre l'optimisation de la matrice X et Y).
+
 ![matrix factorisation](ReadmeImage/ALS_matrix_factorisation.png)
+
+Après un certains nombre d'epochs les 2 matrices sont une bonne factorisation de la matrice de base. Les 2 matrices factorisées permettent de ressortir des prédictions par utilisateur mais aussi par idem. Par exemple, une recommentation d'utilisateur par artiste.
 
 # Questions supplémentaires
 Dans le cadre du projet, Nous devons aussi résoudre des problématiques choisies par nous même. Nous avons choisi d'en ajouter 3 (une par membres du groupe).
@@ -147,17 +163,31 @@ Grace à cette nouvelle colonne les assemptions peuvent être facilement vérifi
 
 ### Resultats
 
+Voici les résultats obtenus pour les différentes expériences. En premier il s'agit simplement d'un affichage du nombre d'écoutes par style de genre metal. On peut constater que le nouveau dataset contient énormement de style différents. Aussi que beaucoup d'écoute sont du death metal.
+
 ![Metal listening number](ReadmeImage/clustering_pie_chart.png)
+
+Dans ce deuxième test, après avoir réalisé la PCA sur les utilisateur par artistes. On peut constater que l'algorithme a du mal à réduire les fortes dimentionnalités comme prédit. Ici les classes sont les noms des artistes. En premier lieu aucun cluster n'a pu être décelé, en effet black sabbath se trouvait proche d'artiste de rap par exemple.
+
+PS: pour ces tests seuls les genres métal et rap ont été retenus.
 
 ![PCA by artist and user](ReadmeImage/clustering_pca_artist_name.png)
 
+Le test suivant est le même clustering mais avec les styles comme classe. La aussi des genres comme rap, rap français ce mélange souvent avec des style comme death metal par exemple. Soit il n'existe pas de cluster, soit les utilisateurs de audioscrobbler ne sont pas des élitistes et ils aiment une variété de styles différents.
+
 ![PCA by artist and user (style)](ReadmeImage/clustering_pca_artist_style.png)
 
+Dans cette expérience, les utilisateurs ont été regroupés par style. pour voir si les styles rap et metal créent 2 clusters distincts. Ici aussi ont peut constater qu'il n'y a pas de cluster distincts mais on peut constater que le death metal est extrement séparer des autres styles. Peut être que les utilisateurs écoutant du death métal écoute seulement du death metal et en grande quantité.
+
 ![PCA by style and user](ReadmeImage/clustering_pca_style.png)
+
+Pour cette dernière expérience avec word2vec on peut constater que la réduction spaciale est bien meilleure. Cependant aucun cluster par style n'a pu être décelé.
 
 ![Word2vec clustering](ReadmeImage/clustering_wrod2vec.png)
 
 ### Amélioration futures
+
+Il serait peut être interressant de fine tuner word2vec et aussi de tester avec UMAP par exemple qui est très bon pour représenter les cluster.
 
 ## Ratio torrent achat
 
@@ -170,7 +200,7 @@ Il faut ici un peu d'habilité avec les commandes Spark et également une bonne 
 
 
 ### Optimisations
-Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner une idée sur le nombre de fois qu'il a été illégalement téléchargé. On part du principe que lors du piratage, du téléchargement illégal, l’utilisateur à mal orthographié le nom de l’artiste en l’enregistrant. Très souvent, aussi, les torrents étaient mal orthographiés, ce qui ne peut pas arriver lorsque l’utilisateur télécharge la music depuis un site légal par exemple iTunes. 
+Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner une idée sur le nombre de fois qu'il a été illégalement téléchargé. On part du principe que lors du piratage, du téléchargement illégal, l’utilisateur à mal orthographié le nom de l’artiste en l’enregistrant. Très souvent, aussi, les torrents étaient mal orthographiés, ce qui ne peut pas arriver lorsque l’utilisateur télécharge la music depuis un site légal par exemple iTunes.
 Nous créons un DaataFrame :
 
 - Nombre de mauvaises ortographe / artiste : dans la liste des alias compter combien de fois un même artiste apparaît en goodid => misspelledCound, artistid
@@ -181,13 +211,18 @@ Avec l'artistid il est ensuite possible de retrouver les noms des artistes pour 
 Sur l'image ci-dessus on peut voir que l'artiste "Metallica" est l'artiste qui à la plus souvent été mal orthographié. Dans une certaine mesure, cela signifie également qu'il est le plus téléchargé illégalement.
 Cependant il est plus intéressant de connaitre le ratio "torrent/achat" pour l'artiste que la valeur absolue de torrent.
 
+<<<<<<< HEAD
+Dans l'interval un comptage total du nombre de mauvaises orthographes sur le nombre total d'apparition des artistes nous donne
+un valeur symbolique de 1.216% de torrent par rapport aux musiques achetées.
+=======
+>>>>>>> 98cfb9debb5c014a401f046fc6cff1b9f0f7ac82
 
 Une seconde étape consiste à connaitre le nombre de fois que chaque artiste apparait parmis les utilisateurs. Cette démarche permettra de calculer le ratio "torrent/achat" par artiste mais également le ratio total parmis tous les téléchargements d'artistes.
 
-Nous créons un DataFrame : 
+Nous créons un DataFrame :
 - Nombre d'apparition d'un artiste : transformation badid -> goodid, puis faire un compte sur les ids des artistes => apparitionArtisteCount, artistid, name
 
-Nous commençons par calculer le ratio torrent/achat total. Nous obtenons un ratio de ~1.216% de torrent par rapport aux téléchargement légaux. 
+Nous commençons par calculer le ratio torrent/achat total. Nous obtenons un ratio de ~1.216% de torrent par rapport aux téléchargement légaux.
 Ensuite nous calculons pour chaque artiste sont propre ratio torrent/achat.
 Selon si l'on trie le resultat par ordre ratio décroissant ou par artiste les plus mal orthographiés
 nous pouvons mettre en évidence :
