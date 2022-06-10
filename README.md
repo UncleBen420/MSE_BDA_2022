@@ -116,25 +116,35 @@ Grace à cette nouvelle colonne les assemptions peuvent être facilement vérifi
 ## Ratio torrent achat
 
 Les données fournies par le dataset sont très limitées. Il serait intéressant d'extraire des features supplémentaires à partir d'un de données disponibles.
-Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes était correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
+Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes étaient correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
 
 ### Algorithms you applied
-Aucun algothime n'a du être utiliser pour cette partie. Il faut ici jongler avec les différents datasets et en extraire les données partinentes.
+Aucun algorithme n'a dû être utiliser pour cette partie. Il faut ici jongler avec les différents datasets et en extraire les données pertinentes.
 Il faut ici un peu d'habilité avec les commandes Spark et également une bonne vision d'ensemble.
+
+
 ### Optimisations you performed
-Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner
-une idée sur le nombre de fois qu'il a été illégalement téléchargé.
+Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner une idée sur le nombre de fois qu'il a été illégalement téléchargé. On part du principe que lors du piratage, du téléchargement illégal, l’utilisateur à mal orthographié le nom de l’artiste en l’enregistrant. Très souvent, aussi, les torrents étaient mal orthographiés, ce qui ne peut pas arriver lorsque l’utilisateur télécharge la music depuis un site légal par exemple iTunes. 
+Nous créons un DaataFrame :
+- Nombre de mauvaises ortographe / artiste : dans la liste des alias compter combien de fois un même artiste apparaît en goodid => misspelledCound, artistid
+Avec l'artistid il est ensuite possible de retrouver les noms des artistes pour les afficher.
 
-![misspelled count](ReadmeImage/Torrent/misspelledArtistCount.png)
+![misspelledArtist count](ReadmeImage/Torrent/misspelledArtistCount.png)
 
-Une seconde étape est de connaitre le nombre d'utilisateur qui écoute chaque artiste. Ceci nous permettra de calculer un ratio
-torrent/achat pour chaque artiste.
+Sur l'image ci-dessus on peut voir que l'artiste "Metallica" est l'artiste qui à la plus souvent été mal orthographié. Dans une certaine mesure, cela signifie également qu'il est le plus téléchargé illégalement.
+Cependant il est plus intéressant de connaitre le ratio "torrent/achat" pour l'artiste que la valeur absolue de torrent.
 
-Dans l'interval un comptage total du nombre de mauvaises orthographes sur le nombre total d'apparition des artistes nous donne 
-un valeur symbolique de 1.216% de torrent par rapport aux musiques achetées.
+
+Une seconde étape consiste à connaitre le nombre de fois que chaque artiste apparait parmis les utilisateurs. Cette démarche permettra de calculer le ratio "torrent/achat" par artiste mais également le ratio total parmis tous les téléchargements d'artistes.
+
+Nous créons un DataFrame : 
+- Nombre d'apparition d'un artiste : transformation badid -> goodid, puis faire un compte sur les ids des artistes => apparitionArtisteCount, artistid, name
+
+Nous commençons par calculer le ratio torrent/achat total. Nous obtenons un ratio de ~1.216% de torrent par rapport aux téléchargement légaux. 
+Ensuite nous calculons pour chaque artiste sont propre ratio torrent/achat.
 
 ### Your approach to testing and evaluation
-Une "cross-validation" ratio/nombre de mauvaises orthographe/artiste a été réalisée. Cela démontre que les manipulations des dataframes
+Une "cross-validation" ratio vs nombre de mauvaises orthographe vs artiste a été réalisée. Cela démontre que les manipulations des dataframes
 sont correctes mais qu'il y a des soucis dû aux datasets.
 
 ### Results you obtained
