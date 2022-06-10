@@ -118,12 +118,12 @@ Grace à cette nouvelle colonne les assemptions peuvent être facilement vérifi
 Les données fournies par le dataset sont très limitées. Il serait intéressant d'extraire des features supplémentaires à partir d'un de données disponibles.
 Le faite que les données de base sont mal orthographiées peut nous donner des informations. En effet, les utilisateurs d'audioscrobbler enregistrait leur propre musique donc il pouvait avoir plusieurs orthographes différentes pour le même artistes. Nous faisons l'assomption que dans une playlist d'un utilisateur, un artiste mal orthographié a sûrement été piraté, car sur une plateforme comme Itunes les artistes étaient correctement orthographié. En sachant cela, nous pouvons nous poser la question : "**Quelle est la proportion de piratage ?**"
 
-### Algorithms you applied
+### Algorithme
 Aucun algorithme n'a dû être utiliser pour cette partie. Il faut ici jongler avec les différents datasets et en extraire les données pertinentes.
 Il faut ici un peu d'habilité avec les commandes Spark et également une bonne vision d'ensemble.
 
 
-### Optimisations you performed
+### Optimisations
 Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner une idée sur le nombre de fois qu'il a été illégalement téléchargé. On part du principe que lors du piratage, du téléchargement illégal, l’utilisateur à mal orthographié le nom de l’artiste en l’enregistrant. Très souvent, aussi, les torrents étaient mal orthographiés, ce qui ne peut pas arriver lorsque l’utilisateur télécharge la music depuis un site légal par exemple iTunes. 
 Nous créons un DaataFrame :
 - Nombre de mauvaises ortographe / artiste : dans la liste des alias compter combien de fois un même artiste apparaît en goodid => misspelledCound, artistid
@@ -142,18 +142,41 @@ Nous créons un DataFrame :
 
 Nous commençons par calculer le ratio torrent/achat total. Nous obtenons un ratio de ~1.216% de torrent par rapport aux téléchargement légaux. 
 Ensuite nous calculons pour chaque artiste sont propre ratio torrent/achat.
+Selon si l'on trie le resultat par ordre ratio décroissant ou par artiste les plus mal orthographiés
+nous pouvons mettre en évidence :
+1. Dans l'ordre décroissant : il y a un souci avec l'extraction des données. Nous avons un ratio >1, ce qui ne peut pas être possible.
+2. Les artistes les plus fréquemment mal orthographié n'ont pas forcément un ration élevé, car ils sont également largement écouté
 
-### Your approach to testing and evaluation
-Une "cross-validation" ratio vs nombre de mauvaises orthographe vs artiste a été réalisée. Cela démontre que les manipulations des dataframes
-sont correctes mais qu'il y a des soucis dû aux datasets.
+![image ratioPirateDesc](ReadmeImage/Torrent/ratioPirateDesc.png)
 
-### Results you obtained
+### Approche de test et d'évaluation
+Une "cross-validation" ratio vs nombre de mauvaises orthographe vs artiste a été réalisée. Cela met en évidence
+le problème rencontré auparavant, c'est-à-dire les ratios >1. Nous avons pour certain artistes un nombre de badid suppérieur à la somme total de fois, après modification de badid to goodid, que l'artiste apparait.
+
+![image ratioPirateDesc](ReadmeImage/Torrent/cross-validation.png)
+
+### Resultats
+LEs résultats obtenus, pour le ratio torrent/achat par artiste sont les suivant :
+1. Ratio des artistes le plus souvent mal orthographié :
+
 ![misspelled ratio ](ReadmeImage/Torrent/ratioPirateMisspelledCount.png)
+
+2. Graphique des ratios pour 1000 artistes :
+
 ![graph ratioTorrent](ReadmeImage/Torrent/graphPirateRationAsc.png)
 
-### Possible future enhancements
-Il y a plusieurs points qui nous font dire que l'approche utilisée ici n'est pas fiable à 100%.
+Dans l'ensemble, si l'on considère que les données sont consistentes pour les ratios les plus "faibles", il est peu fréquent qu'un artiste soit piraté par plus de 20% des gens.
+Les artistes à fort taux d'écoute sont en moyenne piraté à 3%.
+
+
+### Amélioration futures
+Il y a plusieurs points qui nous font dire que l'approche utilisée ici n'est pas fiable à 100% :
 1. Il y a des valeurs manquantes dans les données, ce qui fausse les résultats (ex: ratio de 2.4)
 2. Même si un artiste est bien orthographié, cela ne veut en aucun cas qu'il n'a pas été piraté
+3. Si un artiste à un nom compliqué, il a plus de chance d'être mal écrit lors du piratage qu'un nom simple.
+
+Cette analyse bien qu'intéressante n'est donc pas concrète par la base de donnée qui a certain manquant et le fait que l'on ne peut jamais être certain si la mauvaise orthographe est dû à un piratage ou non. Un contre exemple de mauvaise écriture serait l'acquisition d'un CD puis le transfère des titres sur un mp3. Dans certain cas, les pc,
+n'importaient pas le noms des artistes.
 
 # Conclusion
+
