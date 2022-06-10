@@ -49,6 +49,8 @@ Une fois tous ceci réalisé, nous obtenons un dataset d'entrainement.
 
 ## Description du projet de base
 
+
+
 ## Description du Modèle
 
 ![matrix factorisation](ReadmeImage/ALS_matrix_factorisation.png)
@@ -62,14 +64,58 @@ Dans le projet de base, l'algorithme utilisé (ALS) est un algorithme de collabo
 
 Alors qu'une autre question pourrait être posée : "**Quels sont les artistes qui apparaissent fréquemment ensemble ?**" Cette question peut être répondue avec une analyse du panier d'achat ou règle d'association. Notre intention est donc d'utiliser cet algorithme pour voir si effectivement, il permet de répondre à cette question.
 
-### Algorithms you applied
-### Optimisations you performed
-### Your approach to testing and evaluation
-### Results you obtained
-### Possible future enhancements
+### Algorithme appliqué
+
+L'algorithme utilisé pour effectuer une analyse du panier d'achat est FPGrowth. FPGrowth est un des algorithmes qui permet de créer des règles d'association. Ces règles associes un ou plusieurs objets à un autre objets. Dans notre example, une règle implique que si nous écoutons un certain ensemble d'article alors on aimera écouté un autre artiste. Chaque règle contient des valeur qui montre sa sureté, la "confidence", le "support" et le "lift".
+
+- Le "confidence" (ou confiance) est la probabilité que l'objet A soit présent dans une règle si l'objet B y est. Plus cette valeur est élevé plus nous pouvons avoir confiance en la règle.
+- Le "support" est la probabilité que l'objet A (résultat d'une règle) apparaisse. Le support permet d'avoir une idée de la fréquence du l'objet.
+- Le "lift" est le ratio entre la "confidence" et le "support".
+
+### Transformation des données
+
+La forme des données ne sont pas adaptée pour utiliser avec l'algorithme FPGrowth et effectuer une analyse du panier d'achat. Tou d'abord, il ne s'agit pas d'un panier d'achat, mais d'une list d'artiste écoutés par des utilisateur. Pour contourner se soucis, il est possible de regrouper tous les artiste qu'un utilisateur à écouté et considérer le résultat comme les objets dans sont panier d'achat.
+
+Par example si on as cette liste:
+
+- User 1: Coldplay
+- User 2: U2
+- User 3: Coldplay
+- User 2: The Beatles
+- User 3: Mika
+
+Nous pouvons la transformer sous cette forme (chaque ligne est appelé un transaction):
+
+- User 1: Coldplay
+- User 2: U2, The Beatles
+- User 4: Coldplay, Mika
+
+### Approche de test et d'évaluation
+
+Pour vérifier les résultats, nous avons tout d'abord examiné les valeurs des différents paramètres. Il est important d'avoir une confidence suffisamment élevé mais aussi un support élevé. Nous pouvons aussi regarder quelques règles et voir si elle font sens.
+
+### Resultats
+
+Il y un peu moins de 150000 transactions différentes ave une moyen de 165 artists par transaction (min:1, max 6836) Les données sont très éparpillées.
+
+Environ 200 règles d'associations on été crées avec un support minimum de 0.1 et une confiance minimum de 0.2.
+
+Le support le plus élevé est de ~0.15 alors que la confiance la plus élevée est de ~0.7.
+
+Le résultat du support est plutôt faible et indique que les règle ne sont pas forcément très sure.
+
+Un autre soucis est que les règles n'associe qu'un artiste à un autre ce qui ne les rendent pas très intéressante pour faire une recommendation de musique.
+
+Voici quelques exemple de règles:
+
+- The Offspring => Green Day
+- Led Zeppelin => Red Hot Chili Peppers
+- Bob Dylan => The Beatles
+
+Les recommendation peuvent faire sens mais le problème est que le support est faible et que l'ensemble de départ a très peu d'éléments. Il y a des règles avec plusieurs artists dans l'ensemble de d'épart mais le support devient de plus en petit (moins de 0.1).
 
 ## Clustering visualisation
-​
+
 Une autre question qu'il serait interressante de poser et "**Est-ce que des clusters apparaissent entre les artistes?**" ou "**Est-ce qu'on peut distinguer les genres musicaux avec simplement les données de base ?**". Pour prouver la veracité des résultats un 2ème dataset devra être utilisé pour vérifer les clusters.
 
 ### Algorithmes appliqués
@@ -126,6 +172,7 @@ Il faut ici un peu d'habilité avec les commandes Spark et également une bonne 
 ### Optimisations you performed
 Une première observation est de connaître pour chacun des artistes le nombre de fois qu'il a mal été orthographié. Ceci peut nous donner une idée sur le nombre de fois qu'il a été illégalement téléchargé. On part du principe que lors du piratage, du téléchargement illégal, l’utilisateur à mal orthographié le nom de l’artiste en l’enregistrant. Très souvent, aussi, les torrents étaient mal orthographiés, ce qui ne peut pas arriver lorsque l’utilisateur télécharge la music depuis un site légal par exemple iTunes. 
 Nous créons un DaataFrame :
+
 - Nombre de mauvaises ortographe / artiste : dans la liste des alias compter combien de fois un même artiste apparaît en goodid => misspelledCound, artistid
 Avec l'artistid il est ensuite possible de retrouver les noms des artistes pour les afficher.
 

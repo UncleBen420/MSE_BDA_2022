@@ -1,0 +1,431 @@
+﻿{
+  "paragraphs": [
+    {
+      "text": "import scala.collection.Map\r\nimport scala.collection.mutable.ArrayBuffer\r\nimport scala.util.Random\r\nimport org.apache.spark.broadcast.Broadcast\r\nimport org.apache.spark.ml.fpm.{FPGrowth, FPGrowthModel}\r\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\r\nimport org.apache.spark.sql.functions._\r\n\r\nimport java.nio.file.Paths\r\nimport spark.implicits._\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T18:52:14+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "import scala.collection.Map\nimport scala.collection.mutable.ArrayBuffer\nimport scala.util.Random\nimport org.apache.spark.broadcast.Broadcast\nimport org.apache.spark.ml.fpm.{FPGrowth, FPGrowthModel}\nimport org.apache.spark.sql.{DataFrame, Dataset, SparkSession}\nimport org.apache.spark.sql.functions._\nimport java.nio.file.Paths\nimport spark.implicits._\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654792513053_265032630",
+      "id": "paragraph_1654087886859_1243086342",
+      "dateCreated": "2022-06-09T16:35:13+0000",
+      "dateStarted": "2022-06-09T18:52:14+0000",
+      "dateFinished": "2022-06-09T18:52:16+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:183"
+    },
+    {
+      "text": "val OS = System.getProperty(\"os.name\").toLowerCase\r\nif (OS.contains(\"win\"))\r\n  System.setProperty(\"hadoop.home.dir\", Paths.get(\"winutils\").toAbsolutePath.toString)\r\nelse\r\n  System.setProperty(\"hadoop.home.dir\", \"/\")\r\n\r\nval spark = SparkSession.builder().config(\"spark.master\", \"local[*]\").getOrCreate()\r\n// Optional, but may help avoid errors due to long lineage\r\n//spark.sparkContext.setCheckpointDir(\"./tmp\")\r\n\r\nval base = \"./audioscrobbler_data/\"\r\n// val base = \"gs://dataproc-staging-europe-west6-872288405326-yxz32br1/audioscrobbler_data/\"\r\n\r\nval rawUserArtistData = spark.read.textFile(base + \"user_artist_data.txt\")\r\nval rawArtistData = spark.read.textFile(base + \"artist_data.txt\")\r\nval rawArtistAlias = spark.read.textFile(base + \"artist_alias.txt\")\r\n",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T18:52:16+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "completionKey": "TAB",
+          "editOnDblClick": false,
+          "completionSupport": true,
+          "language": "scala"
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mOS\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = linux\n\u001b[1m\u001b[34mspark\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.SparkSession\u001b[0m = org.apache.spark.sql.SparkSession@4e1d18d7\n\u001b[1m\u001b[34mbase\u001b[0m: \u001b[1m\u001b[32mString\u001b[0m = ./audioscrobbler_data/\n\u001b[1m\u001b[34mrawUserArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n\u001b[1m\u001b[34mrawArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.Dataset[String]\u001b[0m = [value: string]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654792513055_1443915898",
+      "id": "paragraph_1654255430437_1966787196",
+      "dateCreated": "2022-06-09T16:35:13+0000",
+      "dateStarted": "2022-06-09T18:52:16+0000",
+      "dateFinished": "2022-06-09T18:52:17+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:184"
+    },
+    {
+      "text": "/*\nThis function transform all mispelled artist name ID to the right ID and creates a dataframe ready to use with the FPGRowth\n*/\ndef buildArtistsPerUser(rawUserArtistData: Dataset[String], bArtistAlias: Broadcast[Map[Int,Int]]): DataFrame = {\n    rawUserArtistData.map { line =>\n        val Array(userID, artistID, count) = line.split(' ').map(_.toInt)\n        val finalArtistID = bArtistAlias.value.getOrElse(artistID, artistID)\n        (userID, finalArtistID)\n    }.toDF(\"user\", \"artist\").groupBy(\"user\").agg(collect_set(\"artist\").alias(\"artists\"))\n}\n\ndef buildArtistAlias(rawArtistAlias: Dataset[String]): Map[Int,Int] = {\n    rawArtistAlias.flatMap { line =>\n    val Array(artist, alias) = line.split('\\t')\n    if (artist.isEmpty) {\n        None\n    } else {\n        Some((artist.toInt, alias.toInt))\n    }\n    }.collect().toMap\n}\n\n/*\nThis is an optimisation. It ensure that Spark send and hold in memory just one copy for each executor in the cluster.\n*/\nval bArtistAlias = spark.sparkContext.broadcast(buildArtistAlias(rawArtistAlias))\nval trainData = buildArtistsPerUser(rawUserArtistData, bArtistAlias)\n\ntrainData.cache()\ntrainData.show()",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T18:52:17+0000",
+      "progress": 20,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+-------+--------------------+\n|   user|             artists|\n+-------+--------------------+\n|   3175|  [1024031, 1013099]|\n|   7340|[1000790, 3296, 1...|\n|   8389|[1000790, 6769695...|\n|1000190|[1012529, 1298659...|\n|1001043|[1011694, 1006039...|\n|1001129|[1247474, 2094897...|\n|1001139|[437, 793, 100662...|\n|1002431|[1000210, 30, 456...|\n|1002605|[1000790, 1010445...|\n|1004666|[4495, 1298659, 1...|\n|1005158|[4465, 1148981, 1...|\n|1005439|[1178845, 4465, 1...|\n|1005697|[4241, 1095968, 1...|\n|1005853|[1003927, 1007193...|\n|1007007|[1000790, 4037, 1...|\n|1007847|[1002751, 1330, 5...|\n|1008081|[1016791, 1105071...|\n|1008233|           [1240335]|\n|1008804|[2003910, 1239112...|\n|1009408|[1001233, 1003258...|\n+-------+--------------------+\nonly showing top 20 rows\n\n\u001b[1m\u001b[34mbuildArtistsPerUser\u001b[0m: \u001b[1m\u001b[32m(rawUserArtistData: org.apache.spark.sql.Dataset[String], bArtistAlias: org.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]])org.apache.spark.sql.DataFrame\u001b[0m\n\u001b[1m\u001b[34mbuildArtistAlias\u001b[0m: \u001b[1m\u001b[32m(rawArtistAlias: org.apache.spark.sql.Dataset[String])scala.collection.Map[Int,Int]\u001b[0m\n\u001b[1m\u001b[34mbArtistAlias\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.broadcast.Broadcast[scala.collection.Map[Int,Int]]\u001b[0m = Broadcast(97)\n\u001b[1m\u001b[34mtrainData\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [user: int, artists: array<int>]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=62",
+              "$$hashKey": "object:540"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=63",
+              "$$hashKey": "object:541"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654792513056_601015138",
+      "id": "paragraph_1654088776379_248868071",
+      "dateCreated": "2022-06-09T16:35:13+0000",
+      "dateStarted": "2022-06-09T18:52:17+0000",
+      "dateFinished": "2022-06-09T18:53:09+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:185"
+    },
+    {
+      "text": "/*\nDefine and Train the model with the basic parametre\n*/\nval model = new FPGrowth(\"fp_growth\")\n      .setItemsCol(\"artists\")\n      .setMinConfidence(0.2)\n      .setMinSupport(0.1)\n      .setNumPartitions(10)\n      .fit(trainData)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-10T06:16:56+0000",
+      "progress": 95,
+      "config": {
+        "editorSetting": {
+          "completionKey": "TAB",
+          "editOnDblClick": false,
+          "completionSupport": true,
+          "language": "scala"
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34mmodel\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.ml.fpm.FPGrowthModel\u001b[0m = FPGrowthModel: uid=fp_growth, numTrainingRecords=148111\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=64",
+              "$$hashKey": "object:591"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=65",
+              "$$hashKey": "object:592"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=66",
+              "$$hashKey": "object:593"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654792513056_343744876",
+      "id": "paragraph_1654258293037_764454399",
+      "dateCreated": "2022-06-09T16:35:13+0000",
+      "dateStarted": "2022-06-09T18:53:09+0000",
+      "dateFinished": "2022-06-09T18:53:31+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:186"
+    },
+    {
+      "text": "val associationRules = model.associationRules",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T18:53:31+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\u001b[1m\u001b[34massociationRules\u001b[0m: \u001b[1m\u001b[32morg.apache.spark.sql.DataFrame\u001b[0m = [antecedent: array<int>, consequent: array<int> ... 3 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654793373961_592850716",
+      "id": "paragraph_1654793373961_592850716",
+      "dateCreated": "2022-06-09T16:49:33+0000",
+      "dateStarted": "2022-06-09T18:53:31+0000",
+      "dateFinished": "2022-06-09T18:53:31+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:187"
+    },
+    {
+      "text": "associationRules.count()\nassociationRules.show(100)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-09T18:56:21+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+----------+----------+-------------------+------------------+-------------------+\n|antecedent|consequent|         confidence|              lift|            support|\n+----------+----------+-------------------+------------------+-------------------+\n| [1000052]|    [4267]|  0.695210141228518|  2.34642730049215|0.11034291848681056|\n|     [121]|     [979]| 0.5695718654434251|1.8487805952814187|0.10060022550654577|\n|     [189]| [1000113]| 0.5172319193443298|1.8721800827490414|0.10183578532316978|\n|     [189]|     [979]|   0.61198175645554|1.9864394023753338|0.12049071304629635|\n|    [1394]|      [82]| 0.5509839612597451|2.6615826452543008|0.10831741059070563|\n|    [1394]| [1000113]| 0.5993405914070817|  2.16938181123425|0.11782379431642484|\n|    [1394]|    [1274]| 0.5125528042037297| 2.106635264275131|0.10076226613823416|\n|    [1394]|     [976]| 0.5299309681629288|2.1315103502044797|0.10417862278966451|\n|    [1394]|     [979]| 0.5723117079369441|1.8576738850372283|0.11251021193564287|\n| [1000113]| [1001646]| 0.3700725824189252|1.9348307478078801|0.10224088690239078|\n| [1000113]| [1001779]|0.36420733644517217|1.9452278247531967|0.10062048058550682|\n| [1000113]|    [4267]| 0.4664581245875999|1.5743586193011874|0.12886956404318384|\n| [1000113]|     [979]| 0.5737921259072802|1.8624791926419721|0.15852299964216027|\n| [1000113]|    [1259]|0.37623109069136584|2.0436411439978324|0.10394231353511893|\n| [1000113]|    [1177]| 0.4734475427063222|1.8215130788834477|0.13080054823747053|\n| [1000113]|     [976]| 0.4583934113736895|1.8437690180585102|0.12664150535746838|\n| [1000113]|    [1274]| 0.4400889562306019|1.8088027360492474|0.12158448731019303|\n| [1000113]|     [313]|0.40220924265011365|2.1925510908410373|0.11111936318031747|\n| [1000113]|    [1205]|0.43852489063760114|  1.86355148989257|0.12115237895902398|\n| [1000113]|    [3327]| 0.4234463207800777|1.9629137747506522|0.11698658438603479|\n| [1000113]|     [606]|0.37652435299005355|2.4333449012003587|0.10402333385096313|\n| [1000113]| [1231740]| 0.3828783694616193|1.8476638270340773|0.10577877402758742|\n| [1000113]|      [82]| 0.4329284684376451|2.0913038840470977|0.11960624126499719|\n| [1000113]|     [793]| 0.3691927955228622| 2.497442984137321|0.10199782595485818|\n| [1000113]|    [1307]|0.40025416065886266|1.9890633468442092|0.11057922774135615|\n| [1000113]|     [189]| 0.3686062709254869|1.8721800827490411|0.10183578532316978|\n| [1000113]|     [352]| 0.4013294557540507| 2.038943059760169|0.11087630223278487|\n| [1000113]|    [1394]|0.42647669786651676|2.1693818112342504|0.11782379431642484|\n| [1000113]| [1275996]|0.39644175077592314| 2.032798481882387|0.10952596363538157|\n| [1000113]|    [1270]| 0.3967105745497202| 2.064771406231634|0.10960023225823876|\n| [1000123]|    [4267]| 0.6202369516490553| 2.093382748346586| 0.1046242345268076|\n|     [979]| [1001646]|0.41702827087442473| 2.180326669754736|0.12847796584993687|\n|     [979]|       [2]|0.34126671049747975|  2.11717155727956|0.10513736319382085|\n|     [979]|    [4267]|  0.441025641025641|1.4885205824111551|0.13587106967071994|\n|     [979]| [1001779]| 0.3915406530791146| 2.091214801781427|0.12062574690603668|\n|     [979]| [1000113]| 0.5145518299364453| 1.862479192641972|0.15852299964216027|\n|     [979]| [1000062]| 0.3557527942143327|1.9246411989582144|0.10960023225823876|\n|     [979]|    [1259]| 0.3660968660968661|1.9885932788525666|0.11278703134811054|\n|     [979]|    [1177]| 0.5151873767258383|1.9821003598784483|0.15871879873878375|\n|     [979]|     [976]|0.45730878807801884|1.8394064011901108| 0.1408875775600732|\n|     [979]|    [1274]| 0.4280517203594127|1.7593286811564262|0.13187406742240618|\n|     [979]|     [313]| 0.3685075608152531|  2.00883413102348|0.11352971757668236|\n|     [979]|     [231]| 0.3446197676966908|2.1859519663094034|0.10617037222083438|\n|     [979]| [1000139]| 0.3704580319964935|2.0628960665099876|0.11413061825252682|\n|     [979]|    [1205]| 0.4143984220907298| 1.761023862917972|0.12766776269149488|\n|     [979]| [1233770]|0.33052816129739204| 2.119624891666004|0.10182903363018277|\n|     [979]|    [3327]| 0.4237563006793776|1.9643507073307032|0.13055073559695093|\n|     [979]|     [121]| 0.3265395573087881|1.8487805952814185|0.10060022550654577|\n|     [979]|      [15]|0.32877492877492875|2.1219794089150894|0.10128889819122144|\n|     [979]| [1231740]|0.40541310541310543|1.9564101543021133|0.12489956856681814|\n|     [979]|      [82]|0.38972167433705895|  1.88258918194893|0.12006535638811432|\n|     [979]| [1233196]|0.35012053473591936|1.9997185917118523|0.10786504716057552|\n|     [979]| [1270639]|0.36074950690335306|1.7684176281512718|0.11113961825927851|\n|     [979]|    [1307]| 0.4106947183870261|2.0409477061810772| 0.1265267265766891|\n|     [979]|     [234]| 0.3797063335524874| 2.237376064958325|0.11697983269304778|\n|     [979]|     [189]|0.39110234494849877|1.9864394023753333|0.12049071304629635|\n|     [979]|     [352]| 0.4192198115275038| 2.129834511204683|0.12915313514863852|\n|     [979]|    [1394]|0.36519833442910365| 1.857673885037228|0.11251021193564287|\n|     [979]| [1001909]|0.36004821389436775| 2.178661641872317|0.11092356408369398|\n|     [979]| [1275996]| 0.3854700854700855|1.9765400667841382|0.11875552794863312|\n|    [1177]| [1001646]| 0.3853287269137855|2.0145936345062547|0.10015461376940268|\n|    [1177]| [1000062]|0.38932903862638646| 2.106290435036444|0.10119437448940322|\n|    [1177]|    [1259]|0.41925344832064837|2.2773333144174113|0.10897232481044622|\n|    [1177]| [1000113]| 0.5032340182351872|1.8215130788834482|0.13080054823747053|\n|    [1177]|    [4267]| 0.5101696236070343|1.7218907805314465|0.13260325026500394|\n|    [1177]|     [979]| 0.6106449853235317|1.9821003598784486|0.15871879873878375|\n|    [1177]|     [976]|0.44019014468659895|1.7705510827384205|0.11441418935798152|\n|    [1177]|    [1274]| 0.4693872249785698|1.9292210922078183|0.12200309227538805|\n|    [1177]|    [1205]| 0.4879601007870743| 2.073630920944377|0.12683055276110486|\n|    [1177]|    [3327]|0.43328051536483364|2.0085008422647452|0.11261823902343512|\n|    [1177]| [1231740]| 0.4283970179494506|2.0673240820249927|0.11134892074187602|\n|    [1177]| [1270639]| 0.4097981660908642| 2.008857356784404|0.10651470856317222|\n|    [1177]|    [1307]| 0.4109930643946281| 2.042430336886081|0.10682528644057497|\n|    [1177]|     [352]| 0.3853027508637037|1.9575198344312426|0.10014786207641566|\n|    [1177]| [1275996]| 0.4063953035301452|2.0838364134032656|0.10563023678187305|\n| [1000024]|    [1274]| 0.4969230293471874|2.0423955710856165|0.10849295460836805|\n| [1000024]|     [976]| 0.5178587995175805| 2.082953172075832|0.11306385076057822|\n| [1000024]|    [4267]| 0.5211677026316603|1.7590107696483341|0.11378628191018898|\n|     [352]| [1000113]| 0.5633039481356978|2.0389430597601685|0.11087630223278487|\n|     [352]|    [1177]| 0.5087984083970775|1.9575198344312423|0.10014786207641566|\n|     [352]|     [979]| 0.6561588858779542| 2.129834511204683|0.12915313514863852|\n| [1000062]|    [1274]| 0.5846878766848084| 2.403116497493164|0.10807434964317303|\n| [1000062]|     [976]| 0.5690177886547102|2.2887269830116446|0.10517787335174295|\n| [1000062]|    [4267]| 0.6390035431201373|2.1567225070087885|0.11811411711486655|\n| [1000062]|    [1177]| 0.5474668517368594|2.1062904350364438|0.10119437448940322|\n| [1000062]|     [979]|  0.592942981334697|1.9246411989582142|0.10960023225823876|\n|    [1274]| [1000062]| 0.4441946941946942|2.4031164974931642|0.10807434964317303|\n|    [1274]| [1000113]| 0.4997224997224997|1.8088027360492474|0.12158448731019303|\n|    [1274]|     [976]| 0.5432900432900433| 2.185243777034234|0.13218464529980892|\n|    [1274]|    [4267]| 0.5843323343323343|1.9721998580383377|0.14217039922760633|\n|    [1274]|    [1177]| 0.5014430014430015|1.9292210922078186|0.12200309227538805|\n|    [1274]|     [979]|  0.542013542013542|1.7593286811564262|0.13187406742240618|\n|    [1274]|    [1205]| 0.4775224775224775| 2.029275289597213|0.11618313292057983|\n|    [1274]| [1000024]| 0.4459151959151959|2.0423955710856165|0.10849295460836805|\n|    [1274]|    [3327]|0.42207792207792205|1.9565704709362184|0.10269325033252089|\n|    [1274]|    [1394]|0.41414141414141414| 2.106635264275131|0.10076226613823416|\n|    [1274]| [1275996]|0.41708291708291706|2.1386383220380103|0.10147794559485791|\n|      [15]|     [979]| 0.6537388879205159|2.1219794089150894|0.10128889819122144|\n|    [1854]|    [4267]| 0.6127308980098567| 2.068048812413415|0.10996482367953764|\n| [1233196]|    [4192]| 0.5782045349375289|3.7190451154788873|0.10123488464732532|\n+----------+----------+-------------------+------------------+-------------------+\nonly showing top 100 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=67",
+              "$$hashKey": "object:687"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=68",
+              "$$hashKey": "object:688"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=69",
+              "$$hashKey": "object:689"
+            },
+            {
+              "jobUrl": "http://fa1eb7a3dcb1:4040/jobs/job?id=70",
+              "$$hashKey": "object:690"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654798225205_722197492",
+      "id": "paragraph_1654798225205_722197492",
+      "dateCreated": "2022-06-09T18:10:25+0000",
+      "dateStarted": "2022-06-09T18:56:22+0000",
+      "dateFinished": "2022-06-09T19:07:12+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:188"
+    },
+    {
+      "text": "// Rules with the best confidence\nassociationRules.orderBy($\"confidence\".desc).show(100)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-10T06:18:06+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654799465974_1253406968",
+      "id": "paragraph_1654799465974_1253406968",
+      "dateCreated": "2022-06-09T18:31:05+0000",
+      "status": "READY",
+      "$$hashKey": "object:189"
+    },
+    {
+      "text": "// Rules with the best support\nassociationRules.orderBy($\"support\".desc).show(100)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-10T06:18:17+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654841886986_1445665920",
+      "id": "paragraph_1654841886986_1445665920",
+      "dateCreated": "2022-06-10T06:18:06+0000",
+      "status": "READY",
+      "$$hashKey": "object:190"
+    },
+    {
+      "text": "// Rules with the best list\nassociationRules.orderBy($\"lift\".desc).show(100)",
+      "user": "anonymous",
+      "dateUpdated": "2022-06-10T06:18:41+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1654841898033_2015216447",
+      "id": "paragraph_1654841898033_2015216447",
+      "dateCreated": "2022-06-10T06:18:18+0000",
+      "status": "READY",
+      "$$hashKey": "object:191"
+    }
+  ],
+  "name": "music_market_basket_analysis",
+  "id": "2H7NGCD4V",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.10.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/music_market_basket_analysis"
+}
